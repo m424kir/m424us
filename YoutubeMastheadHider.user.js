@@ -1,11 +1,14 @@
 // ==UserScript==
 // @name         Youtube Masthead Hider
 // @namespace    M424
-// @version      0.1
+// @version      0.2
 // @description  youtubeの上部固定ヘッダを隠します(ホバーで表示)
 // @author       M424
 // @match        https://www.youtube.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
+// @grant        none
+// @updateURL    https://github.com/m424kir/m424us/raw/master/YoutubeMastheadHider.user.js
+// @downloadURL  https://github.com/m424kir/m424us/raw/master/YoutubeMastheadHider.user.js
 // ==/UserScript==
 
 (function () {
