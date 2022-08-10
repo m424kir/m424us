@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         Youtubeカスタムショートカット
 // @namespace    M424
-// @version      0.3
+// @version      0.3.1
 // @description  Youtubeのショートカットを無効化したり、上書きしたり、新しく定義したりなどカスタムする
 // @author       M424
 // @match        https://www.youtube.com/watch?*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
 // @grant        none
+// @updateURL    https://github.com/m424kir/m424us/raw/master/Youtube%E3%82%AB%E3%82%B9%E3%82%BF%E3%83%A0%E3%82%B7%E3%83%A7%E3%83%BC%E3%83%88%E3%82%AB%E3%83%83%E3%83%88.user.js
+// @downloadURL  https://github.com/m424kir/m424us/raw/master/Youtube%E3%82%AB%E3%82%B9%E3%82%BF%E3%83%A0%E3%82%B7%E3%83%A7%E3%83%BC%E3%83%88%E3%82%AB%E3%83%83%E3%83%88.user.js
 // ==/UserScript==
 
 (function() {
