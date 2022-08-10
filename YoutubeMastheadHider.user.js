@@ -30,6 +30,10 @@
                 show_interval_ms: 300,
                 toggle: false,
             },
+            style_elem: {
+                className: 'm424-hide-masthead',
+                css: `html:not([fullscreen]) ytd-app { margin-top: -56px; }`,
+            }
         },
         regex: {
             video_page: new RegExp('https:\/\/www\.youtube\.com\/(watch|live_chat)\\?'),
@@ -42,9 +46,7 @@
             console.log('[Youtube Masthead Hider] ', ...msg);
         },
         debug: (...msg) => {
-            if( $.mode.debug ) {
-                console.log('[Youtube Masthead Hider] ', ...msg);
-            }
+            if( $.mode.debug ) { $.log(...msg); }
         },
 
         /**
@@ -69,7 +71,7 @@
                 }
             }).observe(document.body, { childList: true, subtree: true, attributes: true });
 
-            // ページ遷移イベントをセット
+            // マストヘッドに関するイベント処理を追加
             $.events.addEventListener();
         },
 
@@ -82,6 +84,8 @@
                 document.addEventListener('mousemove', $.events.mousemove);
                 document.querySelector('input#search').addEventListener('blur', $.events.searchboxBlur);
                 document.addEventListener('fullscreenchange', $.events.fullscreenchange);
+                document.addEventListener('mouseleave', $.events.mouseleave);
+                document.addEventListener('mouseenter', $.events.mouseenter);
             },
 
             /**
@@ -92,12 +96,13 @@
                 $.debug('ページ遷移イベント処理開始');
 
                 // マストヘッド非表示時のスタイルを定義
-                if( !document.querySelector('.m424-hide-masthead') ) {
-                    $.debug("create style m424-hide-masthead");
+                const selector = '.' + $.masthead.style_elem.className;
+                if( !document.querySelector(selector) ) {
+                    $.debug("create style " + $.masthead.style_elem.className);
                     let node = document.createElement('style');
-                    node.className = 'm424-hide-masthead';
+                    node.className = $.masthead.style_elem.className;
                     node.setAttribute('type', 'text/css');
-                    node.textContent = `html:not([fullscreen]) ytd-app { margin-top: -56px; }`;
+                    node.textContent = $.masthead.style_elem.css;
                     document.head.appendChild(node);
                 }
                 // 遷移先によって、マストヘッドの表示を切り替え
@@ -118,8 +123,7 @@
             mousemove: (e) => {
                 $.mouse.x = e.clientX;
                 $.mouse.y = e.clientY;
-                
-                $.debug("mouse[" + e.clientX + ", " + e.clientY + "]");
+                //$.debug("mouse[" + e.clientX + ", " + e.clientY + "]");
 
                 if( $.isMouseOverMasthead() ) {
                     if( !$.masthead.hover.toggle ) {
@@ -130,7 +134,6 @@
                 }
                 else {
                     $.masthead.hover.toggle = false;
-                    $.masthead.hover.toggle = false;
                     $.hideMasthead();
                 }
             },
@@ -139,6 +142,7 @@
              * 検索ボックスからフォーカスを失ったときのイベント
              */
             searchboxBlur: (e) => {
+                $.debug("searchboxBlur");
                 e.currentTarget.blur();
                 $.hideMasthead();
             },
@@ -147,11 +151,29 @@
              * フルスクリーン時のイベント
              */
             fullscreenchange: (e) => {
+                $.debug("fullscreenchange");
                 if (document.fullscreenElement) {
                     document.querySelector('html').setAttribute('fullscreen', '')
                 } else {
                     document.querySelector('html').removeAttribute('fullscreen')
                 }
+            },
+
+            /**
+             * マウスが領域内に入った時のイベント
+             */
+            mouseenter: (e) => {
+                $.debug("mouseenter");
+                $.showMasthead();
+            },
+
+            /**
+             * マウスが離れた時のイベント
+             */
+            mouseleave: (e) => {
+                $.debug("mouseleave");
+                $.mouse.y = -1;
+                $.hideMasthead();
             },
         },
 
@@ -182,7 +204,7 @@
             // 検索欄アクティブ時またはマウスオーバー時は隠さない
             if( $.isSearchFieldActive() || $.isMouseOverMasthead() ) return;
             document.querySelector('ytd-app').setAttribute("masthead-hidden");
-            document.querySelector('.m424-hide-masthead').disabled = false;
+            document.querySelector('.' + $.masthead.style_elem.className).disabled = false;
         },
 
         /**
@@ -191,7 +213,7 @@
         showMasthead: () => {
             document.querySelector('ytd-app').removeAttribute("masthead-hidden");
             if( !$.regex.video_page.test(location.href) ) {
-                document.querySelector('.m424-hide-masthead').disabled = true;
+                document.querySelector('.' + $.masthead.style_elem.className).disabled = true;
             }
         },
     }
