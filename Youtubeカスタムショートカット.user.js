@@ -1,150 +1,137 @@
 // ==UserScript==
 // @name         Youtubeカスタムショートカット
 // @namespace    M424
-// @version      0.2
+// @version      0.3
 // @description  Youtubeのショートカットを無効化したり、上書きしたり、新しく定義したりなどカスタムする
 // @author       M424
 // @match        https://www.youtube.com/watch?*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
 // @grant        none
-// @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // ==/UserScript==
 
-let hideCursorTimer;
-
 (function() {
-    // @match        https://www.youtube.com/*
+    const SCRIPTID = 'Youtubeカスタムショートカット';
 
-    //////////////////////////////////////////////////
-    // 定数
-    //////////////////////////////////////////////////
-    const C_Html5VideoSelector = '.video-stream.html5-main-video';
-    const C_YoutubeVideoWrapperSelector = '#movie_player';
-    const C_SeekButtonOpacity = 0.3;
-    const C_SeekTimeS = 15;
-    const C_SeekTimeM = 30;
-    const C_SeekTimeL = 60;
+    // 定数クラス
+    class Consts {
+        // Youtube Selector
+        static Selector = class {
+        static VIDEO = ".video-stream.html5-main-video";
+        static VIDEO_WRAPPER = "#movie_player";
+        };
 
-    'use strict';
-    // メイン画面のロード完了を待つ
-    const mo = new MutationObserver((data1, data2) => {
-        const video = document.querySelector(C_Html5VideoSelector);
-        if( video ) {
-            // クリックによるシーク処理を追加する
-            //appendClickSeeker();
-            // カスタムショートカット定義の呼び出し
-            document.addEventListener("keydown", customShortcutor, true);
-            mo.disconnect();
-            return;
-        }
-    })
-    mo.observe(document.body, {
-        childList: true, subtree: true
-    });
-
-    const appendClickSeeker = () => {
-
-        const video = document.querySelector(C_Html5VideoSelector);
-        const videoWrapper = document.querySelector(C_YoutubeVideoWrapperSelector);
-
-        const common = document.createElement('div');
-        common.style.position = 'absolute';
-        common.style.height = '80%';
-        common.style.width = '20%';
-        common.style.top = '10%';
-//        common.style.display = 'inline-block'
-        common.style.display = 'flex';
-
-        common.style.zIndex = '100';
-
-        common.style.backgroundColor = '#202020';
-        common.style.opacity = 0;
-        common.style.transition = '.3s';
-        common.style.alignItems = 'center';
-        common.style.justifyContent = 'center';
-        common.style.fontSize = '5em';
-        common.style.userSelect = 'none';
-
-        const left = common.cloneNode();
-        const right = common.cloneNode();
-        right.style.right = '0';
-        right.innerHTML = '15秒進む';
-        left.innerHTML = '15秒戻る';
-
-        const seeker = (seconds) => {
-            return (e) => {
-                video.currentTime += seconds;
-            }
-        }
-
-        const showSeekButton = (e) => {
-            return (e) => {
-                e.target.style.opacity = C_SeekButtonOpacity;
-            }
-        }
-        const hideSeekButton = (e) => {
-            return (e) => {
-                e.target.style.opacity = 0;
-            }
-        }
-        const hideCursorer = (e) => {
-            return (e) => {
-                e.target.style.cursor = 'auto';
-                e.target.style.opacity = C_SeekButtonOpacity;
-                clearTimeout(hideCursorTimer);
-                hideCursorTimer = setTimeout(function() {
-                    e.target.style.cursor = 'none';
-                    e.target.style.opacity = 0;
-                }, 3000);
-            }
-        }
-
-        left.addEventListener( 'dblclick', seeker(-C_SeekTimeS) );
-        right.addEventListener( 'dblclick', seeker(C_SeekTimeS) );
-
-        left.addEventListener( 'mouseover', showSeekButton() );
-        left.addEventListener( 'mouseout', hideSeekButton() );
-        left.addEventListener( 'mousemove', hideCursorer() );
-        right.addEventListener( 'mouseover', showSeekButton() );
-        right.addEventListener( 'mouseout', hideSeekButton() );
-        right.addEventListener( 'mousemove', hideCursorer() );
-
-        videoWrapper.appendChild(left);
-        videoWrapper.appendChild(right);
-
+        // Youtube Player Seek
+        static SeekTime = [15, 30, 60];
     }
 
-    // ショートカット実行用メソッド定義
-    const customShortcutor = (e) => {
+    // 基底
+    class M424Base {
+        #isDebug;
+        constructor(isDebugMode = false) {
+            this.#isDebug = isDebugMode;
+        }
+        log(...msg) {
+            console.log(`[${SCRIPTID}]`, ...msg);
+        }
+        debug(...msg) {
+            if( this.#isDebug ) { this.log(...msg); }
+        }
+    }
+    // カスタムショートカット定義
+    class YoutubeCustomShortcut extends M424Base {
 
-        const video = document.querySelector(C_Html5VideoSelector);
-        const videoWrapper = document.querySelector(C_YoutubeVideoWrapperSelector)
-
-        /*
-         * サンプル
-         *  - 指定キー押下時のイベントを中断する
-            var list = [74,75,76,70,77,67];
-            if(list.indexOf(e.keyCode) != -1) e.stopPropagation();
+        /**
+         * コンストラクタ
+         * @param isDebugMode
          */
+        constructor(isDebugMode = false) {
+            super(isDebugMode);
+            this.debug("constructor");
 
-        // キー入力: ←, →
-        if( e.code === 'ArrowLeft' || e.code === 'ArrowRight' ) {
+            // プレイヤーの描画完了を検知
+            this.#detectVideoOnLoad();
+        }
 
-            // ブラウザショートカット時を優先
-            if( e.altKey ) {
-                e.stopPropagation();
-                return;
-            }
-            // キー入力で実行されるイベントを取り消す(キー入力をなかったことにする)
-            e.preventDefault();
+        /**
+         * ビデオプレイヤー読込完了を検知する
+         */
+        #detectVideoOnLoad() {
+            this.debug("start detectVideoOnLoad");
+            const observer = new MutationObserver( () => {
+                if( document.querySelector(Consts.Selector.VIDEO) ) {
+                    this.#defineCustomEvent();
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document.body, {childList: true, subtree: true});
+        }
 
-            // シークする
-            video.currentTime += (() => {
-                const dir = e.code === 'ArrowLeft' ? -1 : 1;
-                const sec = e.shiftKey ? C_SeekTimeM : e.ctrlKey ? C_SeekTimeL : C_SeekTimeS;
-                return (dir * sec);
-            })();
+        /**
+         * カスタムショートカットを定義する
+         */
+        #defineCustomEvent() {
+            this.debug("start defineCustomEvent");
+            document.addEventListener("keydown", evt => {
+
+                // キー入力: ←, →
+                if( ['ArrowLeft', 'ArrowRight'].indexOf(evt.code) !== -1 ) {
+
+                    this.debug( `InputKey: {code: ${evt.code}, shift: ${evt.shiftKey}, ctrl: ${evt.ctrlKey}, alt: ${evt.altKey}}` );
+
+                    // 音量調節、テキスト入力欄にフォーカス時は処理しない
+                    if( this.#isVolumePanelFocus() || this.#isTextInputFocus() ) {
+                        this.debug(`${this.#isVolumePanelFocus() ? "音量調節" : "テキスト入力欄"}がフォーカスされているため、処理を中断しました`);
+                        return;
+                    }
+                    // ブラウザショートカット時を優先
+                    if( evt.altKey ) {
+                        this.debug( `ブラウザ側の処理を優先するため処理を中断します. Input: Alt+${evt.code === 'ArrowLeft' ? "←" : "→"}` );
+                        evt.stopPropagation();
+                        return;
+                    }
+                    // キー入力で実行されるイベントを取り消す(キー入力をなかったことにする)
+                    evt.preventDefault();
+
+                    // シークする
+                    const seekTime_sec = (() => {
+                        const dir = 'ArrowLeft' === evt.code ? -1 : 1;
+                        const sec = Consts.SeekTime[evt.shiftKey ? 1 : evt.ctrlKey ? 2 : 0];
+                        return (dir * sec);
+                    })();
+                    this.#seekVideo(seekTime_sec);
+                }
+            }, true);
+        }
+
+        /**
+         * テキスト入力欄にフォーカスしているか
+         */
+        #isTextInputFocus() {
+            const activeElem = document.activeElement;
+            return (
+                ['INPUT', 'TEXTAREA'].indexOf(activeElem.tagName.toUpperCase()) !== -1 ||
+                activeElem.getAttribute('contenteditable') == 'true'
+            );
+        }
+
+        /**
+         * 音量調節にフォーカスしているか
+         */
+        #isVolumePanelFocus() {
+            const activeElem = document.activeElement;
+            return activeElem.classList.contains('ytp-volume-panel');
+        }
+
+        /**
+         * ビデオプレイヤーを指定秒シークする
+         * @param {number} sec
+         */
+        #seekVideo(sec) {
+            const video = document.querySelector(Consts.Selector.VIDEO);
+            video.currentTime = Math.max(0, video.currentTime + sec);
+            this.debug( `[seekVideo] seek: ${sec}sec, currentTime: ${video.currentTime}` );
         }
     }
 
+    let exec = new YoutubeCustomShortcut(false);
 })();
