@@ -5,6 +5,7 @@
 // @author       M424
 // ==/UserScript==
 
+'use strict';
 
 /**
  * @class 基底クラス
@@ -96,25 +97,29 @@ const M424 = {
     }
 }
 
-/**
- * Elementの属性を一括登録する
- * @param {Ojbect} obj 
- */
-Element.prototype.setAttributes = function(obj) {
-    for( let i of Object.entries(obj) ) {
-        this.setAttribute(i[0], i[1]);
-    }    
-}
+// 即時関数で囲まないと動かなかったので...
+(function() {
+    /**
+     * Elementの属性を一括登録する
+     * @param {Ojbect} obj 
+     */
+    Element.prototype.setAttributes = function(obj) {
+        for( let i of Object.entries(obj) ) {
+            this.setAttribute(i[0], i[1]);
+        }    
+    }
 
-/**
- * 自身が指定引数範囲内に含まれるか判定する
- * @param {Number} a 
- * @param {Number} b 
- * @param {Boolean} inclusive 引数自体を範囲に含むか
- * @returns {Boolean} 自身が範囲内ならばtrue
- */
-Number.prototype.between = function(a, b, inclusive) {
-    let min = M424.Math.min(a, b);
-    let max = M424.Math.max(a, b);
-    return inclusive ? min <= this && this <= max : min < this && this < max;
-}
+    /**
+     * 自身が指定引数範囲内に含まれるか判定する
+     * @param {Number} a 
+     * @param {Number} b 
+     * @param {Boolean} inclusive 引数自体を範囲に含むか
+     * @returns {Boolean} 自身が範囲内ならばtrue
+     */
+    Number.prototype.between = function(a, b, inclusive) {
+        let min = M424.Math.min(a, b);
+        let max = M424.Math.max(a, b);
+        return inclusive ? min <= this && this <= max : min < this && this < max;
+    }
+
+})();
