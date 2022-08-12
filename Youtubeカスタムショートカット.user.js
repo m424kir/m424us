@@ -145,7 +145,7 @@
                     // シークする
                     const seekTime_sec = (() => {
                         const dir = 'ArrowLeft' === evt.code ? -1 : 1;
-                        const sec = Consts.SeekTime[evt.shiftKey ? 1 : evt.ctrlKey ? 2 : 0];
+                        const sec = Consts.SEEK_TIME[evt.shiftKey ? 1 : evt.ctrlKey ? 2 : 0];
                         return (dir * sec);
                     })();
                     this.#seekVideo(seekTime_sec);
