@@ -7,6 +7,8 @@
 // @match        https://twitter.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=twitter.com
 // @grant        none
+// @updateURL    https://github.com/m424kir/m424us/raw/master/Twitter%E3%81%AE%E3%83%84%E3%82%A4%E3%83%BC%E3%83%88%E6%99%82%E9%96%93%E3%82%92%E7%B5%B6%E5%AF%BE%E6%99%82%E9%96%93%E3%81%AB%E7%BD%AE%E3%81%8D%E6%8F%9B%E3%81%88%E3%82%8B.user.js
+// @downloadURL  https://github.com/m424kir/m424us/raw/master/Twitter%E3%81%AE%E3%83%84%E3%82%A4%E3%83%BC%E3%83%88%E6%99%82%E9%96%93%E3%82%92%E7%B5%B6%E5%AF%BE%E6%99%82%E9%96%93%E3%81%AB%E7%BD%AE%E3%81%8D%E6%8F%9B%E3%81%88%E3%82%8B.user.js
 // ==/UserScript==
 
 (function() {
