@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitterのツイート時間を絶対時間に置き換える
 // @namespace    M424
-// @version      0.1
+// @version      0.1.1
 // @description  Twitter上のツイートに表示される時間をYYYY/MM/DD (aaa) mm:ddに置換する
 // @author       M424
 // @match        https://twitter.com/*
