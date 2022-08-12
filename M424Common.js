@@ -25,7 +25,7 @@ class M424Base {
 
     /**
      * @constructor
-     * @param {string} scriptId 
+     * @param {string} scriptId
      * @param {Boolean} isDebugMode デバック出力するか
      */
     constructor(scriptId, isDebugMode = false) {
@@ -58,7 +58,7 @@ const M424 = {
         /**
          * Array対応版 Math.max
          * @param  {...Number} args Number配列
-         * @returns {Number} 引数内で一番大きなNumber. 
+         * @returns {Number} 引数内で一番大きなNumber.
          *                   引数が空の場合null. Number以外の場合NaN.
          */
         max: (...args) => {
@@ -78,7 +78,7 @@ const M424 = {
         /**
          * Array対応版 Math.min
          * @param  {...Number} args Number配列
-         * @returns {Number} 引数内で一番小さなNumber. 
+         * @returns {Number} 引数内で一番小さなNumber.
          *                   引数が空の場合null. Number以外の場合NaN.
          */
          min: (...args) => {
@@ -93,33 +93,29 @@ const M424 = {
             const ret = Math.min.apply(null, arr);
             if( ret === Infinity ) return null;
             return ret;
-        }
-    }
-}
+        },
+    },
+};
 
-// 即時関数で囲まないと動かなかったので...
-(function() {
-    /**
-     * Elementの属性を一括登録する
-     * @param {Ojbect} obj 
-     */
-    Element.prototype.setAttributes = function(obj) {
-        for( let i of Object.entries(obj) ) {
-            this.setAttribute(i[0], i[1]);
-        }    
+/**
+ * Elementの属性を一括登録する
+ * @param {Ojbect} obj
+ */
+Element.prototype.setAttributes = function(obj) {
+    for( let i of Object.entries(obj) ) {
+        this.setAttribute(i[0], i[1]);
     }
+};
 
-    /**
-     * 自身が指定引数範囲内に含まれるか判定する
-     * @param {Number} a 
-     * @param {Number} b 
-     * @param {Boolean} inclusive 引数自体を範囲に含むか
-     * @returns {Boolean} 自身が範囲内ならばtrue
-     */
-    Number.prototype.between = function(a, b, inclusive) {
-        let min = M424.Math.min(a, b);
-        let max = M424.Math.max(a, b);
-        return inclusive ? min <= this && this <= max : min < this && this < max;
-    }
-
-})();
+/**
+ * 自身が指定引数範囲内に含まれるか判定する
+ * @param {Number} a
+ * @param {Number} b
+ * @param {Boolean} inclusive 引数自体を範囲に含むか
+ * @returns {Boolean} 自身が範囲内ならばtrue
+ */
+Number.prototype.between = function(a, b, inclusive) {
+    let min = M424.Math.min(a, b);
+    let max = M424.Math.max(a, b);
+    return inclusive ? min <= this && this <= max : min < this && this < max;
+};
