@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         M424Common
-// @version      1.1
+// @version      1.2
 // @description  commonクラス
 // @author       M424
 // ==/UserScript==
@@ -53,134 +53,71 @@ class M424Base {
 }
 
 /**
- * 同Host内のページ遷移を検知する基本クラス
- * @class DetectPageTransitions
- * @extends M424Base
- */
-class DetectPageTransitions extends M424Base {
-
-    /**
-     * 現在保持しているURL[location.href]
-     * @type {string}
-     */
-    #current_url = '';
-
-    /**
-     * 監視対象Node取得用セレクタ
-     * @type {string}
-     */
-    #monitoring_selector = '';
-
-    /**
-     * 監視オプション
-     * @type {object}
-     */
-    #monitoring_options = { childList: true, subtree: true };
-
-    /**
-     * 監視オブジェクト
-     * @typedef {MutationObserver}
-     */
-    #observer;
-
-    /**
-     * @constructor
-     * @param {string} monitoring_selector 監視対象Nodeセレクタ
-     * @param {boolean} isDebug デバック出力するか
-     */
-    constructor(scriptId, isDebug = false) {
-        super(scriptId, isDebug);
-        this.#monitoring_selector = monitoring_selector;
-    }
-
-    /**
-     * [getアクセサ] 監視対象のNodeセレクタ
-     * @return {string} 監視対象のNodeセレクタ
-     */
-    get monitoringSelector() {
-        return this.#monitoring_selector;
-    }
-
-    /**
-     * [setアクセサ] 監視対象のNodeセレクタ
-     * @param {string} 監視対象のNodeセレクタ
-     */
-    set monitoringSelector(selector) {
-        this.#monitoring_selector = selector;
-    }
-
-    /**
-     * [getアクセサ] 監視対象の設定
-     * @return {string} オプションリスト
-     */
-     get monitoringOptions() {
-        return this.#monitoring_options;
-    }
-
-    /**
-     * [setアクセサ] 監視対象の設定
-     * @param {string} オプションリスト
-     */
-     set monitoringOptions(options) {
-        this.#monitoring_options = options;
-    }
-
-    /**
-     * ページ遷移の検知を開始する
-     * @throws MutationObserverが起動済み
-     */
-    start() {
-        if( this.#observer ) {
-            throw new Error("Observerはすでに起動済です.");
-        }
-        this.#current_url = location.href;
-        this.#detectPageTransition();
-    }
-
-    /**
-     * ページ遷移の検知を停止する
-     * @throws MutationObserverが未定義
-     */
-    stop() {
-        if( !this.#observer ) {
-            throw new Error("Observerが起動していません.");
-        }
-        this.#observer.disconnect();
-
-    }
-
-    /**
-     * ページ遷移を検知し、イベントを発行する
-     * @description 対象Nodeの変更を監視し、URLに差異が出たらイベントを発行する
-     */
-    #detectPageTransition() {
-
-        const target = document.querySelector(this.#monitoring_selector) || document.head;
-        const options = this.#monitoring_options || { childList: true, subtree: true };
-        this.#observer = new MutationObserver( (mutations, observer) => {
-            if (this.#current_url != location.href) {
-                console.log(`Detect Page Transition: [${this.#current_url.slice(location.origin.length)}] -> [${location.href.slice(location.origin.length)}]`);
-                this.#triggerPageTransition();
-                this.#current_url = location.href;
-            }
-        });
-        this.#observer.observe(target, options);
-    }
-
-    /**
-     * ページ遷移を伝えるイベントを発行する
-     * @event pagetransition
-     */
-    #triggerPageTransition() {
-        document.dispatchEvent( new CustomEvent('pagetransition', { detail: location.href }) );
-    }
-}
-
-/**
  * 独自定義のメソッド群
  * @namespace M424
  */
 const M424 = {
+
+    /**
+     * @namespace Date
+     */
+    Date: {
+        /**
+         * 日付からYYYY/MM/DD形式の文字列に変換する
+         * @param {Date} dateObj 
+         * @returns YYYY/MM/DD形式の文字列
+         */
+        toYMD: (dateObj) => {
+            const month = ('0' + dateObj.getMonth() + 1).slice(-2);
+            const day = ('0' + dateObj.getDate()).slice(-2);
+            return `${dateObj.getFullYear()}/${month}/${day}`;
+        },
+
+        /**
+         * 日付から曜日情報を取得する
+         * @param {Date} dateObj 
+         * @returns {String} 曜日文字列
+         */
+        toDayOfWeekInJapanese: (dateObj) => {
+            const label = ['日', '月', '火', '水', '木', '金', '土'];
+            return label[dateObj.getDay()];
+        },
+    },
+
+    /**
+     * @namespace Time
+     */
+    Time: {
+        /**
+         * 指定秒数を時間[h]に変換する
+         * @param {Number} sec - 指定秒数
+         * @returns {Number} 時間[h]
+         */
+        toHours: (sec) => { return Math.floor( sec / 3600 ); },
+
+        /**
+         * 指定秒数を分[min]に変換する
+         * @param {Number} sec - 指定秒数
+         * @returns {Number} 分[min]
+         */
+        toMinutes: (sec) => { return Math.floor( sec / 60 ); },
+
+        /**
+         * 指定秒数をhh:mm:ss形式の文字列に変換する
+         * @param {Number} sec - 指定秒数
+         * @returns {String} hh:mm:ss形式の文字列
+         */
+        toHMS: (sec) => { 
+            const hours = M424.Time.toHours(sec);
+            const minutes = M424.Time.toMinutes(sec - 3600 * hours);
+    
+            const hh = ('0' + hours).slice(-2);
+            const mm = ('0' + minutes).slice(-2);
+            const ss = ('0' + sec % 60).slice(-2);
+            return (`${hh}:${mm}:${ss}`);
+        },
+    },
+
     /**
      * @namespace Math
      */
@@ -236,6 +173,17 @@ Element.prototype.setAttributes = function(obj) {
         this.setAttribute(i[0], i[1]);
     }
 };
+
+/**
+ * Elementの属性を一括登録する(NS)
+ * @param {String} namespace - 属性の名前空間を指定する文字列
+ * @param {Object} obj - {key:value}型の連想配列
+ */
+Element.prototype.setAttributesNS = function(namespace, obj) {
+    for( let i of Object.entries(obj) ) {
+        svg.setAttributeNS(namespace, i[0], i[1]);
+    }
+}
 
 /**
  * 自身が指定引数範囲内に含まれるか判定する
