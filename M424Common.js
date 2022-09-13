@@ -110,10 +110,11 @@ const M424 = {
         toHMS: (sec) => { 
             const hours = M424.Time.toHours(sec);
             const minutes = M424.Time.toMinutes(sec - 3600 * hours);
-    
+
             const hh = ('0' + hours).slice(-2);
             const mm = ('0' + minutes).slice(-2);
             const ss = ('0' + sec % 60).slice(-2);
+
             return (`${hh}:${mm}:${ss}`);
         },
     },
@@ -181,7 +182,7 @@ Element.prototype.setAttributes = function(obj) {
  */
 Element.prototype.setAttributesNS = function(namespace, obj) {
     for( let i of Object.entries(obj) ) {
-        svg.setAttributeNS(namespace, i[0], i[1]);
+        this.setAttributeNS(namespace, i[0], i[1]);
     }
 }
 

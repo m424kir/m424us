@@ -1,28 +1,22 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.1
+// @version      0.1.1
 // @description  Youtube関連スクリプト群 - Youtube Custom Script
 // @author       M424
-// @grant        GM_addStyle
-// @grant        GM_getResourceText
-// @require      https://raw.githubusercontent.com/m424kir/m424us/master/M424Common.js
-// @require      ExceedTube.css https://raw.githubusercontent.com/m424kir/m424us/master/ExceedTube.css
 // ==/UserScript==
 
 /**
- * CSS読込
+ * 読込元のスクリプトに以下の定義を追加してください。
  */
-let css;
-css = GM_getResourceText ("ExceedTube.css");
-GM_addStyle (css);
+// @require      https://raw.githubusercontent.com/m424kir/m424us/master/M424Common.js
 
 /**
  * Youtube カスタムクラス
  * @class ExceedTube
  */
-class ExceedTube extends M424Base {
-    
+ class ExceedTube extends M424Base {
+
     /**
      * [Consts] セレクタ
      */
@@ -123,7 +117,7 @@ class ExceedTube extends M424Base {
      */
     #settings = {
         // 現在のページタイプ
-        page_type,
+        page_type: '',
 
         // プレイヤー情報
         player: {
@@ -148,9 +142,12 @@ class ExceedTube extends M424Base {
      */
     #initialize() {
         // ページデータの更新イベント
-        document.addEventListener('yt-page-data-updated', function() {
+        document.addEventListener('yt-page-data-updated', () => {
             // 情報の更新
-            this.#update();
+            this.#updatePageInfo();
+
+            // 動画ページに関する更新処理
+            this.#updateVideo();
 
             // ページ遷移に関するイベントを発行
             document.dispatchEvent( new CustomEvent('exceedtube-page-updated') );
@@ -158,19 +155,32 @@ class ExceedTube extends M424Base {
     }
 
     /**
-     * Youtubeページの情報更新
+     * 動画ページに関する更新処理
      */
-    #update() {
+    #updateVideo() {
+        if( !this.#isVideoPage() ) {
+            return;
+        }
+
+        // プレイヤーコントロールにボタン追加
+        this.#toggleSeekBackwardButtonDisplay();
+        this.#toggleSeekForwardButtonDisplay();
+    }
+
+    /**
+     * Youtubeページの情報更新
+     *  - ページ更新のイベント発生時にページ情報を更新する
+     */
+    #updatePageInfo() {
         // URL情報の更新
         this.#location = location;
-
         // ページの種類を更新
         this.#updatePageType();
 
         // 動画IDを取得/更新 - empty is null.
         this.#settings.video_id = this.#getVideoId(this.#location.href);
 
-        // プレイヤーに関するElement情報を更新
+        // 動画プレイヤーに関するElement情報を更新
         if( this.#isVideoPage() ) {
             this.#elements.player = document.querySelector(ExceedTube.Selector.PLAYER);
             this.#elements.video  = this.#elements.player.querySelector(ExceedTube.Selector.VIDEO);
@@ -227,7 +237,7 @@ class ExceedTube extends M424Base {
      */
     #getVideoId(url) {
         return this.#settings.page_type === 'video'
-            ? url.match(ExceedTube.Regex.VIDEO_ID)
+            ? url.match(ExceedTube.Regex.VIDEO_ID)[1]
             : null
         ;
     }
@@ -238,8 +248,8 @@ class ExceedTube extends M424Base {
      */
     #seekVideo(sec) {
         if( this.#isVideoPage() ) {
-            this.#elements.video.currentTime = Math.max(0, video.currentTime + sec);
-            this.debug(`${sec}秒シークしました. 現在:${M424.Time.toHMS(video.currentTime)}`);
+            this.#elements.video.currentTime = Math.max(0, this.#elements.video.currentTime + sec);
+            this.debug(`${sec}秒シークしました. 現在:${M424.Time.toHMS(Math.floor(this.#elements.video.currentTime))}`);
         }
     }
 
@@ -308,22 +318,14 @@ class ExceedTube extends M424Base {
      * SVG画像オブジェクトを生成する
      * @param {Object} svgOptions - {key:value}型の連想配列
      * @param {Object} pathOptions - {key:value}型の連想配列
-     * @returns 
+     * @returns {Object} svg画像Element
      */
     #generateSvg(svgOptions, pathOptions) {
         let svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         let path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
-        svg.setAttributesNS(svgOptions);
-        path.setAttributesNS(pathOptions);
-/*        
-        for( let i of Object.entries(svgOptions) ) {
-            svg.setAttributeNS(null, i[0], i[1]);
-        }
-        for( let i of Object.entries(pathOptions) ) {
-            path.setAttributeNS(null, i[0], i[1]);
-        }
-*/
+        svg.setAttributesNS(null, svgOptions);
+        path.setAttributesNS(null, pathOptions);
         svg.appendChild(path);
 
         return svg;
@@ -340,7 +342,7 @@ class ExceedTube extends M424Base {
         }
 
         let title = options.title || 'Button';
-        
+
         let button = document.createElement('button');
         button.className = 'ytp-button m424-player-button';
         button.dataset.title = title;
