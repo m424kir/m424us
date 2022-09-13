@@ -97,6 +97,22 @@
                 d:      'M7.875 8 .938 12V4C.875 4 7.875 8 7.875 8zm7 0-7 4V4z',
             },
         };
+    };
+
+    static Css = class {
+        static VIDEO_BUTTON_TOOLTIP = `.m424-player-button--tooltip {
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            line-height: 15px !important;
+            position: fixed !important;
+            transform: translate(-50%, -150%) !important;
+            pointer-events: none !important;
+            color: rgb(238, 238, 238) !important;
+            background-color: rgba(28, 28, 28, 0.9) !important;
+            text-shadow: rgba(0, 0, 0, 0.5) 0px 0px 2px !important;
+            padding: 5px 9px;
+            border-radius: 2px !important;
+        }`;
     }
 
     /**
@@ -165,6 +181,15 @@
         // プレイヤーコントロールにボタン追加
         this.#toggleSeekBackwardButtonDisplay();
         this.#toggleSeekForwardButtonDisplay();
+
+        // ボタン用ツールチップ定義追加
+        if( !document.head.querySelector('m424-style-tooltip') ) {
+            let cssElem = document.createElement('sytle');
+            cssElem.className = 'm424-style-tooltip';
+            cssElem.setAttribute('type', 'text/css');
+            cssElem.textContent = ExceedTube.Css.VIDEO_BUTTON_TOOLTIP;
+            document.head.appendChild(cssElem);
+        }
     }
 
     /**
