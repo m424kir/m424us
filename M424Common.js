@@ -104,7 +104,7 @@ const M424 = {
 
         /**
          * 指定秒数をhh:mm:ss形式の文字列に変換する
-         * @param {Number} sec - 指定秒数
+         * @param {Number} sec - 指定秒数(整数)
          * @returns {String} hh:mm:ss形式の文字列
          */
         toHMS: (sec) => {

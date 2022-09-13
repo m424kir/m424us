@@ -138,8 +138,8 @@
         // プレイヤー情報
         player: {
             // シークボタンの表示可否
-            seek_backward_button: true,
-            seek_forward_button:  true,
+            show_seek_backward_button: true,
+            show_seek_forward_button:  true,
         },
     };
 
@@ -277,11 +277,22 @@
      */
     #seekVideo(sec) {
         if( this.#isVideoPage() ) {
-            this.#elements.video.currentTime = Math.max(0, this.#elements.video.currentTime + sec);
-            this.debug(`${sec}秒シークしました. 現在:${M424.Time.toHMS(~~this.#elements.video.currentTime)}`);
+            let current_sec = this.#elements.video.currentTime;
+            let duration_sec = this.#elements.video.duration;
+
+            // 動画が終点(シーク可能範囲が0.1秒未満)で+シーク or 始点で-シークなら処理しない
+            if( (sec > 0 && duration_sec - current_sec < 0.1) || (sec < 0 && current_sec < 0.1) ) {
+                return;
+            }
+            this.#elements.video.currentTime = Math.min( duration_sec, Math.max(0, current_sec + sec) );
+            this.debug(`${Math.ceil(this.#elements.video.currentTime - current_sec)}sec seek. ${M424.Time.toHMS(~~this.#elements.video.currentTime)} / ${M424.Time.toHMS(~~duration_sec)}`);
+            //this.debug(`time: ${this.#elements.video.currentTime.toFixed(3)} / ${duration_sec.toFixed(3)}`);
         }
     }
 
+    /**
+     * キーボードショートカットを定義する
+     */
     #defineKeyboardShortcut() {
 
         document.addEventListener('keydown', evt => {
@@ -312,7 +323,7 @@
                 // シークする
                 const seekTime_sec = (() => {
                     const sec = evt.shiftKey ? ExceedTube.SEEK_TIME.shift : evt.ctrlKey ? ExceedTube.SEEK_TIME.ctrl : ExceedTube.SEEK_TIME.normal;
-                    return 'ArrowLeft' === evt.code ? ~sec + 1 : sec;
+                    return 'ArrowLeft' === evt.code ? -sec : sec;
                 })();
                 this.#seekVideo(seekTime_sec);
 
@@ -325,7 +336,7 @@
      */
      #toggleSeekBackwardButtonDisplay() {
         this.#toggleSeekButtonDisplay(
-            this.#settings.player.seek_backward_button,
+            this.#settings.player.show_seek_backward_button,
             -ExceedTube.SEEK_TIME.normal,
             ExceedTube.ButtonOptions.SEEK_BACKWARD.button,
             ExceedTube.ButtonOptions.SEEK_BACKWARD.svg,
@@ -337,7 +348,7 @@
      */
      #toggleSeekForwardButtonDisplay() {
         this.#toggleSeekButtonDisplay(
-            this.#settings.player.seek_forward_button,
+            this.#settings.player.show_seek_forward_button,
             ExceedTube.SEEK_TIME.normal,
             ExceedTube.ButtonOptions.SEEK_FORWARD.button,
             ExceedTube.ButtonOptions.SEEK_FORWARD.svg,
@@ -347,7 +358,7 @@
     /**
      * シークボタンの表示を切り替える
      */
-     #toggleSeekButtonDisplay(isDisabled, seekTime_sec, buttonOptions, svgOptions) {
+     #toggleSeekButtonDisplay(isShow, seekTime_sec, buttonOptions, svgOptions) {
         // Process if video page
         if( !this.#isVideoPage() ) {
             return;
@@ -356,12 +367,12 @@
         let seekButton = this.#elements.player.querySelector(`#${buttonOptions.id}`);
         // ボタン追加済なら表示切替
         if( seekButton ) {
-            seekButton.disabled = isDisabled;
+            seekButton.style.display = isShow ? 'inline' : 'none';
             return;
         }
 
         // ボタンを生成
-        if( isDisabled ) {
+        if( isShow ) {
 
             // SVG画像を生成
             let svg = this.#generateSvg(ExceedTube.ButtonOptions.SVG, svgOptions);
@@ -421,6 +432,7 @@
 
             tooltip.className = 'm424-player-button--tooltip';
             tooltip.textContent = title;
+            tooltip.style.display = 'inline';
 
             tooltip.style.left = rect.left + rect.width / 2 + 'px';
             tooltip.style.top = rect.top - 1 + 'px';
