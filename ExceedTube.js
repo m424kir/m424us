@@ -80,8 +80,8 @@
         static SEEK_BACKWARD = {
             button: {
                 id:     'm424-seek-backward-button',
-                title:  '15秒戻る', 
-            }, 
+                title:  '15秒戻る',
+            },
             svg: {
                 fill:   '#eee',
                 d:      'm8 8 7 4V4zM1 8l7 4V4z',
@@ -90,8 +90,8 @@
         static SEEK_FORWARD = {
             button: {
                 id:     'm424-seek-forward-button',
-                title:  '15秒進む', 
-            }, 
+                title:  '15秒進む',
+            },
             svg: {
                 fill:   '#eee',
                 d:      'M7.875 8 .938 12V4C.875 4 7.875 8 7.875 8zm7 0-7 4V4z',
@@ -129,8 +129,8 @@
 
     /**
      * @constructor
-     * @param {string} scriptId 
-     * @param {boolean} isDebug 
+     * @param {string} scriptId
+     * @param {boolean} isDebug
      */
     constructor(scriptId, isDebug = false) {
         super(scriptId, isDebug);
@@ -199,13 +199,13 @@
 
     /**
      * テキスト入力欄にフォーカスしているか
-     * @param {*} evt 
+     * @param {*} evt
      * @returns true: テキスト入力欄にフォーカスしている
      */
     #isForcusTextInputField(evt) {
         const activeElem = document.activeElement;
         return (
-            ['EMBED', 'INPUT', 'OBJECT', 'TEXTAREA', 'IFRAME'].includes(activeElem.tagName) === true || 
+            ['EMBED', 'INPUT', 'OBJECT', 'TEXTAREA', 'IFRAME'].includes(activeElem.tagName) === true ||
             evt.target.isContentEditable
         );
     }
@@ -223,8 +223,8 @@
      * 現在のページの種類を取得/更新する
      */
     #updatePageType() {
-        let result = ExceedTube.Pathnames.find( e => e.regex 
-            ? e.regex.test(this.#location.pathname) 
+        let result = ExceedTube.Pathnames.find( e => e.regex
+            ? e.regex.test(this.#location.pathname)
             : e.path === this.#location.pathname
         );
         this.#settings.page_type = result.name || 'other';
@@ -232,7 +232,7 @@
 
     /**
      * 現在の動画に関するIDを取得する
-     * @param {string} url 
+     * @param {string} url
      * @returns {string} 動画ID or null
      */
     #getVideoId(url) {
@@ -244,7 +244,7 @@
 
     /**
      * 動画ページの場合、指定秒シークする
-     * @param {Number} sec 
+     * @param {Number} sec
      */
     #seekVideo(sec) {
         if( this.#isVideoPage() ) {
@@ -258,7 +258,7 @@
      */
      #toggleSeekBackwardButtonDisplay() {
         this.#toggleSeekButtonDisplay(
-            this.#settings.player.seek_backward_button, 
+            this.#settings.player.seek_backward_button,
             -ExceedTube.SEEK_TIME.normal,
             ExceedTube.ButtonOptions.SEEK_BACKWARD.button,
             ExceedTube.ButtonOptions.SEEK_BACKWARD.svg,
@@ -270,8 +270,8 @@
      */
      #toggleSeekForwardButtonDisplay() {
         this.#toggleSeekButtonDisplay(
-            this.#settings.player.seek_forward_button, 
-            ExceedTube.SEEK_TIME.normal, 
+            this.#settings.player.seek_forward_button,
+            ExceedTube.SEEK_TIME.normal,
             ExceedTube.ButtonOptions.SEEK_FORWARD.button,
             ExceedTube.ButtonOptions.SEEK_FORWARD.svg,
         );

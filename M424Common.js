@@ -64,7 +64,7 @@ const M424 = {
     Date: {
         /**
          * 日付からYYYY/MM/DD形式の文字列に変換する
-         * @param {Date} dateObj 
+         * @param {Date} dateObj
          * @returns YYYY/MM/DD形式の文字列
          */
         toYMD: (dateObj) => {
@@ -75,7 +75,7 @@ const M424 = {
 
         /**
          * 日付から曜日情報を取得する
-         * @param {Date} dateObj 
+         * @param {Date} dateObj
          * @returns {String} 曜日文字列
          */
         toDayOfWeekInJapanese: (dateObj) => {
@@ -107,7 +107,7 @@ const M424 = {
          * @param {Number} sec - 指定秒数
          * @returns {String} hh:mm:ss形式の文字列
          */
-        toHMS: (sec) => { 
+        toHMS: (sec) => {
             const hours = M424.Time.toHours(sec);
             const minutes = M424.Time.toMinutes(sec - 3600 * hours);
 
