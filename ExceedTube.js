@@ -178,6 +178,9 @@
             return;
         }
 
+        // 独自のキーボードショートカット定義を追加
+        this.#defineKeyboardShortcut();
+
         // プレイヤーコントロールにボタン追加
         this.#toggleSeekBackwardButtonDisplay();
         this.#toggleSeekForwardButtonDisplay();
@@ -274,8 +277,42 @@
     #seekVideo(sec) {
         if( this.#isVideoPage() ) {
             this.#elements.video.currentTime = Math.max(0, this.#elements.video.currentTime + sec);
-            this.debug(`${sec}秒シークしました. 現在:${M424.Time.toHMS(Math.floor(this.#elements.video.currentTime))}`);
+            this.debug(`${sec}秒シークしました. 現在:${M424.Time.toHMS(~~this.#elements.video.currentTime)}`);
         }
+    }
+
+    #defineKeyboardShortcut() {
+
+        document.addEventListener('keydown', evt => {
+            // キー入力[←, →]
+            if( ['ArrowLeft', 'ArrowRight'].includes(evt.code) ) {
+                this.debug( `キー入力: {code: ${evt.code}, shift: ${evt.shiftKey}, ctrl: ${evt.ctrlKey}, alt: ${evt.altKey}}` );
+
+                // 特定のフォーカス時は処理しない
+                if( this.#isForcusTextInputField(evt) || this.#isForcusVolume() ) {
+                    this.debug( `${this.#isForcusVolume() ? "ボリューム" : "テキスト欄"}にフォーカスされているため、処理を中断しました.` );
+                    return;
+                }
+
+                if( evt.altKey ) {
+                    this.debug( `ブラウザ側の処理を優先するため処理を中断します. {キー入力: Alt + ${evt.code === 'ArrowLeft' ? "←" : "→"}}` );
+                    evt.stopPropagation();
+                    return;
+                }
+
+                // キー入力で実行されるイベントを取り消す(キー入力をなかったことにする)
+                evt.preventDefault();
+
+                // シークする
+                const seekTime_sec = (() => {
+                    const dir = 'ArrowLeft' === evt.code ? -1 : 1;
+                    const sec = ExceedTube.SEEK_TIME[evt.shiftKey ? 1 : evt.ctrlKey ? 2 : 0];
+                    return (dir * sec);
+                })();
+                this.#seekVideo(seekTime_sec);
+
+            }
+        }, true);
     }
 
     /**
