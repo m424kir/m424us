@@ -168,6 +168,10 @@
             // ページ遷移に関するイベントを発行
             document.dispatchEvent( new CustomEvent('exceedtube-page-updated') );
         });
+
+        // 独自のキーボードショートカット定義を追加
+        this.#defineKeyboardShortcut();
+
     }
 
     /**
@@ -177,9 +181,6 @@
         if( !this.#isVideoPage() ) {
             return;
         }
-
-        // 独自のキーボードショートカット定義を追加
-        this.#defineKeyboardShortcut();
 
         // プレイヤーコントロールにボタン追加
         this.#toggleSeekBackwardButtonDisplay();
@@ -284,6 +285,11 @@
     #defineKeyboardShortcut() {
 
         document.addEventListener('keydown', evt => {
+
+            if( !this.#isVideoPage() ) {
+                return;
+            }
+
             // キー入力[←, →]
             if( ['ArrowLeft', 'ArrowRight'].includes(evt.code) ) {
                 this.debug( `キー入力: {code: ${evt.code}, shift: ${evt.shiftKey}, ctrl: ${evt.ctrlKey}, alt: ${evt.altKey}}` );
@@ -300,14 +306,13 @@
                     return;
                 }
 
-                // キー入力で実行されるイベントを取り消す(キー入力をなかったことにする)
+                // キー入力をなかったことにする
                 evt.preventDefault();
 
                 // シークする
                 const seekTime_sec = (() => {
-                    const dir = 'ArrowLeft' === evt.code ? -1 : 1;
-                    const sec = ExceedTube.SEEK_TIME[evt.shiftKey ? 1 : evt.ctrlKey ? 2 : 0];
-                    return (dir * sec);
+                    const sec = evt.shiftKey ? ExceedTube.SEEK_TIME.shift : evt.ctrlKey ? ExceedTube.SEEK_TIME.ctrl : ExceedTube.SEEK_TIME.normal;
+                    return 'ArrowLeft' === evt.code ? ~sec + 1 : sec;
                 })();
                 this.#seekVideo(seekTime_sec);
 
