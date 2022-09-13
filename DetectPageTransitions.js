@@ -1,12 +1,16 @@
 // ==UserScript==
 // @name         DetectPageTransitions
 // @namespace    M424
-// @version      0.1
+// @version      0.1.1
 // @description  同Host内のページ遷移を検知する基本クラス
 // @author       M424
 // @grant        none
-// @require      https://raw.githubusercontent.com/m424kir/m424us/master/M424Common.js
 // ==/UserScript==
+
+/**
+ * 読込元のスクリプトに以下の定義を追加してください。
+ */
+// @require      https://raw.githubusercontent.com/m424kir/m424us/master/M424Common.js
 
 /**
  * 同Host内のページ遷移を検知する基本クラス
