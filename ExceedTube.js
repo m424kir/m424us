@@ -183,8 +183,8 @@
         this.#toggleSeekForwardButtonDisplay();
 
         // ボタン用ツールチップ定義追加
-        if( !document.head.querySelector('m424-style-tooltip') ) {
-            let cssElem = document.createElement('sytle');
+        if( !document.head.querySelector('.m424-style-tooltip') ) {
+            let cssElem = document.createElement('style');
             cssElem.className = 'm424-style-tooltip';
             cssElem.setAttribute('type', 'text/css');
             cssElem.textContent = ExceedTube.Css.VIDEO_BUTTON_TOOLTIP;
@@ -381,7 +381,7 @@
             tooltip.textContent = title;
 
             tooltip.style.left = rect.left + rect.width / 2 + 'px';
-            tooltip.style.top = rect.top - 8 + 'px';
+            tooltip.style.top = rect.top - 1 + 'px';
 
             const mouseleaveEvent = function() {
                 tooltip.remove();
