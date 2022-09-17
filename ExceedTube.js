@@ -17,6 +17,9 @@
  */
  class ExceedTube extends M424Base {
 
+    static Consts = class {
+        static CSS_CLASS_TOOLTIP = 'm424-style-tooltip';
+    }
     /**
      * [Consts] セレクタ
      */
@@ -141,6 +144,15 @@
             show_seek_backward_button: true,
             show_seek_forward_button:  true,
         },
+
+        // マストヘッドの表示可否
+        hide_masthead: true,
+    };
+
+    // マウス情報
+    #mouse = {
+        // 位置情報
+        x: 0, y: 0,
     };
 
     /**
@@ -169,9 +181,21 @@
             document.dispatchEvent( new CustomEvent('exceedtube-page-updated') );
         });
 
-        // 独自のキーボードショートカット定義を追加
-        this.#defineKeyboardShortcut();
+        // マウス関連のイベントを追加
+        this.#defineMouseEvent();
 
+        // キーボード関連のイベントを追加
+        this.#defineKeyboardEvent();
+
+    }
+
+    /**
+     * マウス情報を更新する
+     */
+     #updateMouse() {
+        this.#mouse.x = evt.clientX;
+        this.#mouse.y = evt.clientY;
+        this.debug(`mouse[${this.#mouse.x}, ${this.#mouse.y}]`);
     }
 
     /**
@@ -187,9 +211,9 @@
         this.#toggleSeekForwardButtonDisplay();
 
         // ボタン用ツールチップ定義追加
-        if( !document.head.querySelector('.m424-style-tooltip') ) {
+        if( !document.head.querySelector(`.${ExceedTube.Consts.CSS_CLASS_TOOLTIP}`) ) {
             let cssElem = document.createElement('style');
-            cssElem.className = 'm424-style-tooltip';
+            cssElem.className = ExceedTube.Consts.CSS_CLASS_TOOLTIP;
             cssElem.setAttribute('type', 'text/css');
             cssElem.textContent = ExceedTube.Css.VIDEO_BUTTON_TOOLTIP;
             document.head.appendChild(cssElem);
@@ -219,6 +243,17 @@
     }
 
     /**
+     * 現在のページの種類を取得/更新する
+     */
+     #updatePageType() {
+        let result = ExceedTube.Pathnames.find( e => e.regex
+            ? e.regex.test(this.#location.pathname)
+            : e.path === this.#location.pathname
+        );
+        this.#settings.page_type = result.name || 'other';
+    }
+
+    /**
      * 現在のページが動画のページかどうかを返す
      * @returns true: 現在のページが動画ページ
      */
@@ -228,15 +263,12 @@
 
     /**
      * テキスト入力欄にフォーカスしているか
-     * @param {*} evt
+     * @param {Event} evt
      * @returns true: テキスト入力欄にフォーカスしている
      */
     #isForcusTextInputField(evt) {
-        const activeElem = document.activeElement;
-        return (
-            ['EMBED', 'INPUT', 'OBJECT', 'TEXTAREA', 'IFRAME'].includes(activeElem.tagName) === true ||
-            evt.target.isContentEditable
-        );
+        const textFields = ['EMBED', 'INPUT', 'OBJECT', 'TEXTAREA', 'IFRAME'];
+        return ( textFields.includes(document.activeElement.tagName) || evt.target.isContentEditable );
     }
 
     /**
@@ -244,29 +276,44 @@
      * @returns true: ボリュームにフォーカスしている
      */
     #isForcusVolume() {
-        const activeElem = document.activeElement;
-        return activeElem.classList.contains('ytp-volume-panel');
+        return document.activeElement.classList.contains('ytp-volume-panel');
     }
 
     /**
-     * 現在のページの種類を取得/更新する
+     * マウスポインターがマストヘッド上に置かれているか
+     * @returns true: マウスポインターがマストヘッド上に置かれている
      */
-    #updatePageType() {
-        let result = ExceedTube.Pathnames.find( e => e.regex
-            ? e.regex.test(this.#location.pathname)
-            : e.path === this.#location.pathname
-        );
-        this.#settings.page_type = result.name || 'other';
+    #isHoverMasthead() {
+        const windowWidth = document.documentElement.getBoundingClientRect().width;
+        return ( this.#mouse.x.between(0, windowWidth, true) && this.#mouse.y.between(0, 56, true) );
     }
 
     /**
-     * 現在の動画に関するIDを取得する
+     * 検索欄にフォーカスが当たっているか
+     * @returns true: 検索欄にフォーカスが当たっている
+     */
+     #isForcusSearchBox() {
+        const activeElem = document.activeElement;
+        return (activeElem.tagName === 'INPUT' && activeElem.id === 'search' );
+    }
+
+    /**
+     * マストヘッドが表示可能か
+     * @returns true: マストヘッドが表示可能
+     */
+     #canShowMasthead() {
+        return this.#isHoverMasthead() || this.#isForcusSearchBox();
+    }
+
+    /**
+     * 動画IDを取得する
+     *  - 動画IDが検出できない or 動画ページでなければ null を返す
      * @param {string} url
      * @returns {string} 動画ID or null
      */
     #getVideoId(url) {
         return this.#settings.page_type === 'video'
-            ? url.match(ExceedTube.Regex.VIDEO_ID)[1]
+            ? url.match(ExceedTube.Regex.VIDEO_ID)[1] || null
             : null
         ;
     }
@@ -291,10 +338,28 @@
     }
 
     /**
-     * キーボードショートカットを定義する
+     * マウスイベントを定義する
      */
-    #defineKeyboardShortcut() {
+    #defineMouseEvent() {
 
+        const events = ['mousemove', 'mouseenter', 'mouseleave'];
+        events.forEach( evt => {
+            this.#updateMouse();
+            this.#toggleMastheadDisplay();
+        });
+        // 検索欄のフォーカスが外れた際のイベント
+        document.querySelector('input#search').addEventListener('blur', (evt) => {
+            evt.currentTarget.blur();
+            this.#toggleMastheadDisplay();
+        });
+    }
+
+    /**
+     * キーボードイベントを定義する
+     */
+    #defineKeyboardEvent() {
+
+        // キー入力イベント
         document.addEventListener('keydown', evt => {
 
             if( !this.#isVideoPage() ) {
@@ -302,6 +367,8 @@
             }
 
             // キー入力[←, →]
+            //  - 既存ショートカット(5sec seek)を削除して、新たに定義する(15sec seek)
+            //  - Altキー押下時は、ブラウザの入力(forword/back)を優先する
             if( ['ArrowLeft', 'ArrowRight'].includes(evt.code) ) {
                 this.debug( `キー入力: {code: ${evt.code}, shift: ${evt.shiftKey}, ctrl: ${evt.ctrlKey}, alt: ${evt.altKey}}` );
 
@@ -459,4 +526,37 @@
 
         return button;
     }
+
+
+    /**
+     * マストヘッドを表示する
+     */
+    #showMasthead() {
+        document.querySelector('ytd-app').removeAttribute('masthead-hidden');
+        document.querySelector('ytd-app').style.cssText += '--ytd-masthead-height: 56px;';
+    }
+
+    /**
+     * マストヘッドを隠す
+     */
+    #hideMasthead() {
+        if( !this.#isVideoPage() ) {
+            return;
+        }
+        if( this.#canShowMasthead() ) {
+            return;
+        }
+        document.querySelector('ytd-app').setAttribute('masthead-hidden');
+        document.querySelector('ytd-app').style.cssText += '--ytd-masthead-height: 0px;';
+    }
+
+    /**
+     * マストヘッドの表示を切り替える
+     */
+    #toggleMastheadDisplay() {
+        !this.#settings.hide_masthead ||
+            this.#canShowMasthead() ? this.#showMasthead() : this.#hideMasthead()
+        ;
+    }
+
 }
