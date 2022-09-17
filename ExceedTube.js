@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.1.1
+// @version      0.2
 // @description  Youtube関連スクリプト群 - Youtube Custom Script
 // @author       M424
 // ==/UserScript==
@@ -17,9 +17,32 @@
  */
  class ExceedTube extends M424Base {
 
-    static Consts = class {
-        static CSS_CLASS_TOOLTIP = 'm424-style-tooltip';
+    /**
+     * [Consts] Element属性
+     */
+    static Attributes = class {
+        static Class = class {
+            static TOOLTIP_STYLE          = 'm424-style-tooltip';             // ツールチップ用CSS
+            static PLAYER_BUTTON          = 'm424-player-button';             // プレイヤー内ボタン
+            static PLAYER_BUTTON_TOOLTIP  = 'm424-player-button--tooltip';    // プレイヤー内ボタン用ツールチップ
+        };
+        static ID = class {
+            static SEEK_BACKWARD_BUTTON   = 'm424-seek-backward-button';      // シークボタン(戻る)
+            static SEEK_FORWARD_BUTTON    = 'm424-seek-forward-button';       // シークボタン(進む)
+        };
+        static Title = class {
+            static SEEK_BACKWARD_BUTTON   = '15秒戻る';                       // シークボタン(戻る)
+            static SEEK_FORWARD_BUTTON    = '15秒進む';                       // シークボタン(進む)
+        };
     }
+
+    /**
+     * [Consts] イベント
+     */
+    static Events = class {
+        static PAGE_UPDATED = 'exceedtube-page-updated';    // ページ更新イベント
+    }
+
     /**
      * [Consts] セレクタ
      */
@@ -73,6 +96,9 @@
      */
     static SEEK_TIME = { normal: 15, shift: 30, ctrl: 60 };
 
+    /**
+     * [Consts] ボタンオプション
+     */
     static ButtonOptions = class {
         static SVG = {
             version:    '1,1',
@@ -82,8 +108,8 @@
         };
         static SEEK_BACKWARD = {
             button: {
-                id:     'm424-seek-backward-button',
-                title:  '15秒戻る',
+                id:     ExceedTube.Attributes.ID.SEEK_BACKWARD_BUTTON,
+                title:  ExceedTube.Attributes.Title.SEEK_BACKWARD_BUTTON,
             },
             svg: {
                 fill:   '#eee',
@@ -92,8 +118,8 @@
         };
         static SEEK_FORWARD = {
             button: {
-                id:     'm424-seek-forward-button',
-                title:  '15秒進む',
+                id:     ExceedTube.Attributes.ID.SEEK_FORWARD_BUTTON,
+                title:  ExceedTube.Attributes.Title.SEEK_FORWARD_BUTTON,
             },
             svg: {
                 fill:   '#eee',
@@ -102,8 +128,11 @@
         };
     };
 
+    /**
+     * [Consts] CSS
+     */
     static Css = class {
-        static VIDEO_BUTTON_TOOLTIP = `.m424-player-button--tooltip {
+        static VIDEO_BUTTON_TOOLTIP = `.${ExceedTube.Attributes.Class.PLAYER_BUTTON_TOOLTIP} {
             font-size: 13px !important;
             font-weight: 500 !important;
             line-height: 15px !important;
@@ -178,7 +207,7 @@
             this.#updateVideo();
 
             // ページ遷移に関するイベントを発行
-            document.dispatchEvent( new CustomEvent('exceedtube-page-updated') );
+            document.dispatchEvent( new CustomEvent(ExceedTube.Events.PAGE_UPDATED) );
         });
 
         // マウス関連のイベントを追加
@@ -192,7 +221,7 @@
     /**
      * マウス情報を更新する
      */
-     #updateMouse() {
+     #updateMouse(evt) {
         this.#mouse.x = evt.clientX;
         this.#mouse.y = evt.clientY;
         this.debug(`mouse[${this.#mouse.x}, ${this.#mouse.y}]`);
@@ -211,9 +240,9 @@
         this.#toggleSeekForwardButtonDisplay();
 
         // ボタン用ツールチップ定義追加
-        if( !document.head.querySelector(`.${ExceedTube.Consts.CSS_CLASS_TOOLTIP}`) ) {
+        if( !document.head.querySelector(`.${ExceedTube.Attributes.Class.TOOLTIP_STYLE}`) ) {
             let cssElem = document.createElement('style');
-            cssElem.className = ExceedTube.Consts.CSS_CLASS_TOOLTIP;
+            cssElem.className = ExceedTube.Attributes.Class.TOOLTIP_STYLE;
             cssElem.setAttribute('type', 'text/css');
             cssElem.textContent = ExceedTube.Css.VIDEO_BUTTON_TOOLTIP;
             document.head.appendChild(cssElem);
@@ -233,12 +262,25 @@
         // 動画IDを取得/更新 - empty is null.
         this.#settings.video_id = this.#getVideoId(this.#location.href);
 
+        // ページのElement情報を更新
+        this.#updatePageElements();
+
+    }
+
+    /**
+     * ページのElement情報を更新する
+     */
+    #updatePageElements() {
+
+        this.#elements.ytd_app = document.querySelector('ytd-app');
+
         // 動画プレイヤーに関するElement情報を更新
         if( this.#isVideoPage() ) {
-            this.#elements.player = document.querySelector(ExceedTube.Selector.PLAYER);
-            this.#elements.video  = this.#elements.player.querySelector(ExceedTube.Selector.VIDEO);
-            this.#elements.player_left_controls  = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_LEFT_CONTROLS);
-            this.#elements.player_right_controls = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_RIGHT_CONTROLS);
+            this.#elements.player                 = document.querySelector(ExceedTube.Selector.PLAYER);
+            this.#elements.video                  = this.#elements.player.querySelector(ExceedTube.Selector.VIDEO);
+            this.#elements.player_left_controls   = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_LEFT_CONTROLS);
+            this.#elements.player_right_controls  = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_RIGHT_CONTROLS);
+            this.#elements.player_settings_button = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_SETTINGS_BUTTON);
         }
     }
 
@@ -342,13 +384,15 @@
      */
     #defineMouseEvent() {
 
-        const events = ['mousemove', 'mouseenter', 'mouseleave'];
-        events.forEach( evt => {
-            this.#updateMouse();
-            this.#toggleMastheadDisplay();
+        const eventTypes = ['mousemove', 'mouseenter', 'mouseleave'];
+        eventTypes.forEach( eventType => {
+            document.addEventListener(eventType, evt => {
+                this.#updateMouse(evt);
+                this.#toggleMastheadDisplay();
+            });
         });
         // 検索欄のフォーカスが外れた際のイベント
-        document.querySelector('input#search').addEventListener('blur', (evt) => {
+        document.querySelector('input#search').addEventListener('blur', evt => {
             evt.currentTarget.blur();
             this.#toggleMastheadDisplay();
         });
@@ -454,8 +498,7 @@
             });
 
             // 設定ボタンの横に配置する
-            let reference = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_SETTINGS_BUTTON);
-            this.#elements.player_right_controls.insertBefore(button, reference);
+            this.#elements.player_right_controls.insertBefore(button, this.#elements.player_settings_button);
         }
     }
 
@@ -489,7 +532,7 @@
         let title = options.title || 'Button';
 
         let button = document.createElement('button');
-        button.className = 'ytp-button m424-player-button';
+        button.className = `ytp-button ${ExceedTube.Attributes.Class.PLAYER_BUTTON}`;
         button.dataset.title = title;
 
         // ツールチップ表示イベントを追加
@@ -497,7 +540,7 @@
             let tooltip = document.createElement('div');
             let rect = this.getBoundingClientRect();
 
-            tooltip.className = 'm424-player-button--tooltip';
+            tooltip.className = ExceedTube.Attributes.Class.PLAYER_BUTTON_TOOLTIP;
             tooltip.textContent = title;
             tooltip.style.display = 'inline';
 
@@ -527,13 +570,14 @@
         return button;
     }
 
-
     /**
      * マストヘッドを表示する
      */
     #showMasthead() {
-        document.querySelector('ytd-app').removeAttribute('masthead-hidden');
-        document.querySelector('ytd-app').style.cssText += '--ytd-masthead-height: 56px;';
+        if( this.#elements.ytd_app ) {
+            this.#elements.ytd_app.removeAttribute('masthead-hidden');
+            this.#elements.ytd_app.style.cssText += '--ytd-masthead-height: 56px;';
+        }
     }
 
     /**
@@ -546,8 +590,10 @@
         if( this.#canShowMasthead() ) {
             return;
         }
-        document.querySelector('ytd-app').setAttribute('masthead-hidden');
-        document.querySelector('ytd-app').style.cssText += '--ytd-masthead-height: 0px;';
+        if( this.#elements.ytd_app ) {
+            this.#elements.ytd_app.setAttribute('masthead-hidden');
+            this.#elements.ytd_app.style.cssText += '--ytd-masthead-height: 0px;';
+        }
     }
 
     /**
@@ -558,5 +604,4 @@
             this.#canShowMasthead() ? this.#showMasthead() : this.#hideMasthead()
         ;
     }
-
 }
