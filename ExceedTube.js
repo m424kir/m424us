@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.2
+// @version      0.2.1
 // @description  Youtube関連スクリプト群 - Youtube Custom Script
 // @author       M424
 // ==/UserScript==
@@ -227,8 +227,8 @@
      * マウス関連の初期実行処理
      */
     #initializeMouse() {
-        let evt = new Event('mousemove');
-        document.dispatchEvent( evt );
+        this.#mouse.x = -1;
+        this.#mouse.y = -1;
     }
 
     /**
@@ -254,6 +254,9 @@
         if( !this.#isVideoPage() ) {
             return;
         }
+
+        // マストヘッドの表示を切り替える
+        this.#toggleMastheadDisplay();
 
         // プレイヤーコントロールにボタン追加
         this.#toggleSeekBackwardButtonDisplay();
