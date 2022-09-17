@@ -216,6 +216,26 @@
         // キーボード関連のイベントを追加
         this.#defineKeyboardEvent();
 
+        // マウスに関する初期処理
+        this.#initializeMouse();
+
+        // キーボードに関する初期処理
+        this.#initializeKeyboard();
+    }
+
+    /**
+     * マウス関連の初期実行処理
+     */
+    #initializeMouse() {
+        let evt = new Event('mousemove');
+        document.dispatchEvent( evt );
+    }
+
+    /**
+     * キーボード関連の初期実行処理
+     */
+    #initializeKeyboard() {
+        // nop
     }
 
     /**
@@ -224,7 +244,7 @@
      #updateMouse(evt) {
         this.#mouse.x = evt.clientX;
         this.#mouse.y = evt.clientY;
-        this.debug(`mouse[${this.#mouse.x}, ${this.#mouse.y}]`);
+        //this.debug(`mouse[${this.#mouse.x}, ${this.#mouse.y}]`);
     }
 
     /**
@@ -264,7 +284,6 @@
 
         // ページのElement情報を更新
         this.#updatePageElements();
-
     }
 
     /**
@@ -384,6 +403,7 @@
      */
     #defineMouseEvent() {
 
+        // マウス移動に関するイベント
         const eventTypes = ['mousemove', 'mouseenter', 'mouseleave'];
         eventTypes.forEach( eventType => {
             document.addEventListener(eventType, evt => {
@@ -468,6 +488,10 @@
 
     /**
      * シークボタンの表示を切り替える
+     * @param {Boolean} isShow - シークボタンの表示可否
+     * @param {Number} seekTime_sec - シーク時間(秒)
+     * @param {Object} buttonOptions - シークボタンに関する属性設定(連想配列)
+     * @param {Object} svgOptions - シークボタンの画像設定(連想配列)
      */
      #toggleSeekButtonDisplay(isShow, seekTime_sec, buttonOptions, svgOptions) {
         // Process if video page
@@ -504,8 +528,8 @@
 
     /**
      * SVG画像オブジェクトを生成する
-     * @param {Object} svgOptions - {key:value}型の連想配列
-     * @param {Object} pathOptions - {key:value}型の連想配列
+     * @param {Object} svgOptions - SVGタグの属性設定(連想配列)
+     * @param {Object} pathOptions - PATHタグの属性設定(連想配列)
      * @returns {Object} svg画像Element
      */
     #generateSvg(svgOptions, pathOptions) {
@@ -521,7 +545,7 @@
 
     /**
      * ビデオプレイヤー用のボタンを生成する
-     * @param {Object} options - {key:value}型の連想配列
+     * @param {Object} options - ボタンElement用の属性設定(連想配列)
      * @returns ボタンElement
      */
     #generatePlayerButton(options) {
