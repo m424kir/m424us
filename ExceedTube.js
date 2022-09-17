@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.2.1
+// @version      0.2.2
 // @description  Youtube関連スクリプト群 - Youtube Custom Script
 // @author       M424
 // ==/UserScript==
@@ -405,7 +405,6 @@
      * マウスイベントを定義する
      */
     #defineMouseEvent() {
-
         // マウス移動に関するイベント
         const eventTypes = ['mousemove', 'mouseenter', 'mouseleave'];
         eventTypes.forEach( eventType => {
@@ -414,10 +413,12 @@
                 this.#toggleMastheadDisplay();
             });
         });
-        // 検索欄のフォーカスが外れた際のイベント
-        document.querySelector('input#search').addEventListener('blur', evt => {
-            evt.currentTarget.blur();
-            this.#toggleMastheadDisplay();
+        // 検索欄のフォーカスに関するイベント
+        const searchBoxEventTypes = ['focus', 'blur'];
+        searchBoxEventTypes.forEach( eventType => {
+            document.querySelector('input#search').addEventListener( eventType, evt => {
+                this.#toggleMastheadDisplay();
+            });
         });
     }
 
