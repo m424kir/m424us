@@ -399,7 +399,7 @@
      * @returns true: マストヘッドが表示可能
      */
      #canShowMasthead() {
-        return this.#isHoverMasthead() || this.#isForcusSearchBox();
+        return !this.#isVideoPage() || this.#isHoverMasthead() || this.#isForcusSearchBox();
     }
 
     /**
