@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.2.2
+// @version      0.2.3
 // @description  Youtube関連スクリプト群 - Youtube Custom Script
 // @author       M424
 // ==/UserScript==
@@ -200,11 +200,12 @@
     #initialize() {
         // ページデータの更新イベント
         document.addEventListener('yt-page-data-updated', () => {
-            // 情報の更新
+
+            // ページ情報の更新
             this.#updatePageInfo();
 
-            // 動画ページに関する更新処理
-            this.#updateVideo();
+            // ページ表示に関する状態の更新処理
+            this.#updatePageDisplay();
 
             // ページ遷移に関するイベントを発行
             document.dispatchEvent( new CustomEvent(ExceedTube.Events.PAGE_UPDATED) );
@@ -248,28 +249,39 @@
     }
 
     /**
+     * ページの表示に関する更新処理
+     */
+     #updatePageDisplay() {
+
+        // ページ全体の表示に関する更新処理
+        this.#updatePageDisplayGlobal();
+
+        // 動画ページの表示に関する更新処理
+        this.#updateVideoPageDisplay();
+    }
+
+    /**
+     * ページ全体の表示に関する更新処理
+     */
+    #updatePageDisplayGlobal() {
+
+        // マストヘッドの表示を切り替える
+        this.#toggleMastheadDisplay();
+    }
+
+    /**
      * 動画ページに関する更新処理
      */
-    #updateVideo() {
+    #updateVideoPageDisplay() {
+
         if( !this.#isVideoPage() ) {
             return;
         }
 
-        // マストヘッドの表示を切り替える
-        this.#toggleMastheadDisplay();
-
         // プレイヤーコントロールにボタン追加
         this.#toggleSeekBackwardButtonDisplay();
         this.#toggleSeekForwardButtonDisplay();
-
-        // ボタン用ツールチップ定義追加
-        if( !document.head.querySelector(`.${ExceedTube.Attributes.Class.TOOLTIP_STYLE}`) ) {
-            let cssElem = document.createElement('style');
-            cssElem.className = ExceedTube.Attributes.Class.TOOLTIP_STYLE;
-            cssElem.setAttribute('type', 'text/css');
-            cssElem.textContent = ExceedTube.Css.VIDEO_BUTTON_TOOLTIP;
-            document.head.appendChild(cssElem);
-        }
+        this.#defineVideoButtonTooltipStyle();
     }
 
     /**
@@ -277,8 +289,10 @@
      *  - ページ更新のイベント発生時にページ情報を更新する
      */
     #updatePageInfo() {
+
         // URL情報の更新
         this.#location = location;
+
         // ページの種類を更新
         this.#updatePageType();
 
@@ -303,6 +317,25 @@
             this.#elements.player_left_controls   = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_LEFT_CONTROLS);
             this.#elements.player_right_controls  = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_RIGHT_CONTROLS);
             this.#elements.player_settings_button = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_SETTINGS_BUTTON);
+
+            // 動画情報が取得できない場合、情報が更新されるまで監視する
+            if( isNaN(this.#elements.video.duration) ) {
+                const obsever = new MutationObserver( (mutations) => {
+                    const video = this.#elements.player.querySelector(ExceedTube.Selector.VIDEO);
+                    if( video && !isNaN(video.duration) ) {
+                        this.#elements.video                  = video;
+                        this.#elements.player_left_controls   = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_LEFT_CONTROLS);
+                        this.#elements.player_right_controls  = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_RIGHT_CONTROLS);
+                        this.#elements.player_settings_button = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_SETTINGS_BUTTON);
+                        obsever.disconnect();
+                    }
+                });
+                obsever.observe( this.#elements.player, {
+                    attributes: true,
+                    childList: true,
+                    subtree: true
+                });
+            }
         }
     }
 
@@ -464,6 +497,22 @@
 
             }
         }, true);
+    }
+
+    /**
+     * プレイヤー内のボタン用ツールチップのCSSを定義
+     */
+     #defineVideoButtonTooltipStyle() {
+
+        const target = document.head.querySelector(`.${ExceedTube.Attributes.Class.TOOLTIP_STYLE}`);
+        if( target ) {
+            return;
+        }
+        let cssElem = document.createElement('style');
+        cssElem.className = ExceedTube.Attributes.Class.TOOLTIP_STYLE;
+        cssElem.setAttribute('type', 'text/css');
+        cssElem.textContent = ExceedTube.Css.VIDEO_BUTTON_TOOLTIP;
+        document.head.appendChild(cssElem);
     }
 
     /**
