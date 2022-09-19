@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.3
+// @version      0.3.1
 // @description  Youtube関連スクリプト群 - Youtube Custom Script
 // @author       M424
 // ==/UserScript==
@@ -178,10 +178,10 @@
         masthead: {
             // 動画ページ内での動作について
             video_page: {
-                hide_display: true,                 // 表示を隠すか
-                show_interval_when_scrolling: 1000, // スクロールしてから表示するまでの時間(-1で表示しない)
-                show_interval_when_hover: 500,      // ホバーしてから表示するまでの時間
-                hide_interval_when_blur: 500,       // ブラー(マウスが範囲外)してから隠すまでの時間
+                hide_display:                   true,   // 表示を隠すか
+                show_interval_when_scrolling:   100,    // スクロールしてから表示するまでの時間(マイナスで表示しない)
+                show_interval_when_hover:       100,     // ホバーしてから表示するまでの時間
+                hide_interval_when_blur:        100,     // ブラー(マウスが範囲外)してから隠すまでの時間
             },
             // 動画ページで隠すか
             hide_on_video_page: true,
@@ -197,9 +197,9 @@
          */
         show_masthead: {
             id: undefined,
-            isRunning: () => { return (this.id !== undefined && typeof this.id === 'number'); },
-            resist: (func, interval) => { window.setTimeout(func, interval); },
-            cancel: () => {
+            isRunning: function() { return (this.id !== undefined && typeof this.id === 'number'); },
+            resist: function(func, interval) { this.id = window.setTimeout(func, interval); },
+            cancel: function() {
                 window.clearTimeout(this.id);
                 this.id = undefined;
             },
@@ -209,9 +209,9 @@
          */
         hide_masthead: {
             id: undefined,
-            isRunning: () => { return (this.id !== undefined && typeof this.id === 'number'); },
-            resist: (func, interval) => { window.setTimeout(func, interval); },
-            cancel: () => {
+            isRunning: function() { return (this.id !== undefined && typeof this.id === 'number'); },
+            resist: function(func, interval) { this.id = window.setTimeout(func, interval); },
+            cancel: function() {
                 window.clearTimeout(this.id);
                 this.id = undefined;
             },
@@ -379,7 +379,7 @@
         this.#settings.page_type = ExceedTube.Pathnames.find( e => e.regex
             ? e.regex.test(this.#location.pathname)
             : e.path === this.#location.pathname
-        ) || 'other';
+        ).name || 'other';
     }
 
     /**
@@ -395,7 +395,7 @@
      * @param {Event} evt
      * @returns true: テキスト入力欄にフォーカスしている
      */
-    #isForcusTextInputField(evt) {
+    #isFocusTextInputField(evt) {
         const textFields = ['EMBED', 'INPUT', 'OBJECT', 'TEXTAREA', 'IFRAME'];
         return ( textFields.includes(document.activeElement.tagName) || evt.target.isContentEditable );
     }
@@ -404,7 +404,7 @@
      * ボリュームにフォーカスしているか
      * @returns true: ボリュームにフォーカスしている
      */
-    #isForcusVolume() {
+    #isFocusVolume() {
         return document.activeElement.classList.contains('ytp-volume-panel');
     }
 
@@ -421,7 +421,7 @@
      * 検索欄にフォーカスが当たっているか
      * @returns true: 検索欄にフォーカスが当たっている
      */
-     #isForcusSearchBox() {
+     #isFocusSearchBox() {
         const activeElem = document.activeElement;
         return (activeElem.tagName === 'INPUT' && activeElem.id === 'search' );
     }
@@ -447,18 +447,18 @@
         if( !this.#isVideoPage() ) {
             return true;
         }
+        let ret = false;
         switch(eventType) {
-            case 'scroll':
-                const interval = this.#settings.masthead.video_page.show_interval_when_scrolling;
-                return interval >= 0 && this.#isScrollY();
             case 'mousemove':
             case 'mouseenter':
             case 'mouseleave':
             case 'focus':
             case 'blur':
-            default:
-                return this.#isHoverMasthead() || this.#isForcusSearchBox();
+                ret = ret || this.#isHoverMasthead() || this.#isFocusSearchBox();
+            case 'scroll':
+                ret = ret || this.#settings.masthead.video_page.show_interval_when_scrolling >= 0 && this.#isScrollY();
         }
+        return ret;
     }
 
     /**
@@ -502,7 +502,7 @@
      * マウスイベントを定義する
      */
     #defineMouseEvent() {
-        const eventTypes = ['mousemove', 'mouseenter', 'mouseleave', 'scroll', 'forcus', 'blur'];
+        const eventTypes = ['mousemove', 'mouseenter', 'mouseleave', 'scroll', 'focus', 'blur'];
         eventTypes.forEach( evType => {
             switch(evType) {
                 // マウスの位置に関するイベント
@@ -519,8 +519,9 @@
                     });
                     break;
                 // 検索欄のフォーカスに関するイベント
-                case 'forcus': case 'blur':
+                case 'focus': case 'blur':
                     document.querySelector('input#search').addEventListener( evType, e => {
+                        this.log(evType);
                         this.#toggleMastheadDisplay(evType);
                     });
                     break;
@@ -549,8 +550,8 @@
                 this.debug( `キー入力: {code: ${evt.code}, shift: ${evt.shiftKey}, ctrl: ${evt.ctrlKey}, alt: ${evt.altKey}}` );
 
                 // 特定のフォーカス時は処理しない
-                if( this.#isForcusTextInputField(evt) || this.#isForcusVolume() ) {
-                    this.debug( `${this.#isForcusVolume() ? "ボリューム" : "テキスト欄"}にフォーカスされているため、処理を中断しました.` );
+                if( this.#isFocusTextInputField(evt) || this.#isFocusVolume() ) {
+                    this.debug( `${this.#isFocusVolume() ? "ボリューム" : "テキスト欄"}にフォーカスされているため、処理を中断しました.` );
                     return;
                 }
 
@@ -630,7 +631,7 @@
      * @param {Function} clickFunc - 押下時の処理
      * @param {Object} insertPlace - 表示位置の指定(連想配列)
      */
-     #toggleButtonDisplay(isShow, seekTime_sec, buttonOptions, svgOptions, clickFunc, insertPlace) {
+     #toggleButtonDisplay(isShow, buttonOptions, svgOptions, clickFunc, insertPlace) {
         // Process if video page
         if( !this.#isVideoPage() ) {
             return;
