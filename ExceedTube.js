@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.2.3
+// @version      0.3
 // @description  Youtube関連スクリプト群 - Youtube Custom Script
 // @author       M424
 // ==/UserScript==
@@ -174,8 +174,48 @@
             show_seek_forward_button:  true,
         },
 
-        // マストヘッドの表示可否
-        hide_masthead: true,
+        // マストヘッド
+        masthead: {
+            // 動画ページ内での動作について
+            video_page: {
+                hide_display: true,                 // 表示を隠すか
+                show_interval_when_scrolling: 1000, // スクロールしてから表示するまでの時間(-1で表示しない)
+                show_interval_when_hover: 500,      // ホバーしてから表示するまでの時間
+                hide_interval_when_blur: 500,       // ブラー(マウスが範囲外)してから隠すまでの時間
+            },
+            // 動画ページで隠すか
+            hide_on_video_page: true,
+        }
+    };
+
+    /**
+     * イベント
+     */
+    #events = {
+        /**
+         * マストヘッドの表示イベント
+         */
+        show_masthead: {
+            id: undefined,
+            isRunning: () => { return (this.id !== undefined && typeof this.id === 'number'); },
+            resist: (func, interval) => { window.setTimeout(func, interval); },
+            cancel: () => {
+                window.clearTimeout(this.id);
+                this.id = undefined;
+            },
+        },
+        /**
+         * マストヘッドの非表示イベント
+         */
+        hide_masthead: {
+            id: undefined,
+            isRunning: () => { return (this.id !== undefined && typeof this.id === 'number'); },
+            resist: (func, interval) => { window.setTimeout(func, interval); },
+            cancel: () => {
+                window.clearTimeout(this.id);
+                this.id = undefined;
+            },
+        },
     };
 
     // マウス情報
@@ -279,8 +319,7 @@
         }
 
         // プレイヤーコントロールにボタン追加
-        this.#toggleSeekBackwardButtonDisplay();
-        this.#toggleSeekForwardButtonDisplay();
+        this.#toggleSeekButtonDisplay();
         this.#defineVideoButtonTooltipStyle();
     }
 
@@ -319,22 +358,16 @@
             this.#elements.player_settings_button = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_SETTINGS_BUTTON);
 
             // 動画情報が取得できない場合、情報が更新されるまで監視する
-            if( isNaN(this.#elements.video.duration) ) {
+            if( !this.#elements.video || isNaN(this.#elements.video.duration) ) {
+                const options = { attributes: true, childList: true, subtree: true };
                 const obsever = new MutationObserver( (mutations) => {
-                    const video = this.#elements.player.querySelector(ExceedTube.Selector.VIDEO);
+                    const video = document.querySelector(ExceedTube.Selector.VIDEO);
                     if( video && !isNaN(video.duration) ) {
-                        this.#elements.video                  = video;
-                        this.#elements.player_left_controls   = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_LEFT_CONTROLS);
-                        this.#elements.player_right_controls  = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_RIGHT_CONTROLS);
-                        this.#elements.player_settings_button = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_SETTINGS_BUTTON);
+                        this.#updatePageElements();
                         obsever.disconnect();
                     }
                 });
-                obsever.observe( this.#elements.player, {
-                    attributes: true,
-                    childList: true,
-                    subtree: true
-                });
+                obsever.observe( this.#elements.player, options);
             }
         }
     }
@@ -343,11 +376,10 @@
      * 現在のページの種類を取得/更新する
      */
      #updatePageType() {
-        let result = ExceedTube.Pathnames.find( e => e.regex
+        this.#settings.page_type = ExceedTube.Pathnames.find( e => e.regex
             ? e.regex.test(this.#location.pathname)
             : e.path === this.#location.pathname
-        );
-        this.#settings.page_type = result.name || 'other';
+        ) || 'other';
     }
 
     /**
@@ -395,11 +427,38 @@
     }
 
     /**
+     * Y軸方向にスクロールされているか
+     * @returns true: スクロールされている
+     */
+    #isScrollY() {
+        return (window.scrollY > 1);
+    }
+
+    /**
      * マストヘッドが表示可能か
+     *  - 表示条件
+     *      1. not(動画ページ) ※必須条件
+     *      2. and(表示するまでの時間 >= 0, Y軸のスクロール量 > 0)
+     *      3. or(ヘッダ上にホバーしている, 検索欄にフォーカスしている)
+     * @param {string} eventType - 実行されているEventタイプ
      * @returns true: マストヘッドが表示可能
      */
-     #canShowMasthead() {
-        return !this.#isVideoPage() || this.#isHoverMasthead() || this.#isForcusSearchBox();
+     #canShowMasthead(eventType) {
+        if( !this.#isVideoPage() ) {
+            return true;
+        }
+        switch(eventType) {
+            case 'scroll':
+                const interval = this.#settings.masthead.video_page.show_interval_when_scrolling;
+                return interval >= 0 && this.#isScrollY();
+            case 'mousemove':
+            case 'mouseenter':
+            case 'mouseleave':
+            case 'focus':
+            case 'blur':
+            default:
+                return this.#isHoverMasthead() || this.#isForcusSearchBox();
+        }
     }
 
     /**
@@ -416,42 +475,58 @@
     }
 
     /**
-     * 動画ページの場合、指定秒シークする
+     * 動画を指定秒シークする
      * @param {Number} sec
      */
     #seekVideo(sec) {
-        if( this.#isVideoPage() ) {
-            let current_sec = this.#elements.video.currentTime;
-            let duration_sec = this.#elements.video.duration;
-
-            // 動画が終点(シーク可能範囲が0.1秒未満)で+シーク or 始点で-シークなら処理しない
-            if( (sec > 0 && duration_sec - current_sec < 0.1) || (sec < 0 && current_sec < 0.1) ) {
-                return;
-            }
-            this.#elements.video.currentTime = Math.min( duration_sec, Math.max(0, current_sec + sec) );
-            this.debug(`${Math.ceil(this.#elements.video.currentTime - current_sec)}sec seek. ${M424.Time.toHMS(~~this.#elements.video.currentTime)} / ${M424.Time.toHMS(~~duration_sec)}`);
-            //this.debug(`time: ${this.#elements.video.currentTime.toFixed(3)} / ${duration_sec.toFixed(3)}`);
+        if( !this.#isVideoPage() ) {
+            return;
         }
+        const current_sec  = this.#elements.video.currentTime;
+        const duration_sec = this.#elements.video.duration;
+        if( !current_sec || !duration_sec ) {
+            new Error('[ExceedTube][seekVideo] 動画情報が取得できませんでした.');
+            return;
+        }
+        // 動画が終点(シーク可能範囲が0.1秒未満)で+シーク or 始点で-シークなら処理しない
+        if( (sec > 0 && duration_sec - current_sec < 0.1) || (sec < 0 && current_sec < 0.1) ) {
+            return;
+        }
+        const postSeekTime_sec = Math.min( duration_sec, Math.max(0, current_sec + sec) );
+        this.#elements.video.currentTime = postSeekTime_sec;
+        this.debug(`${Math.ceil(postSeekTime_sec - current_sec)}sec seek. ${M424.Time.toHMS(~~postSeekTime_sec)} / ${M424.Time.toHMS(~~duration_sec)}`);
+        //this.debug(`time: ${postSeekTime_sec.toFixed(3)} / ${duration_sec.toFixed(3)}`);
     }
 
     /**
      * マウスイベントを定義する
      */
     #defineMouseEvent() {
-        // マウス移動に関するイベント
-        const eventTypes = ['mousemove', 'mouseenter', 'mouseleave'];
-        eventTypes.forEach( eventType => {
-            document.addEventListener(eventType, evt => {
-                this.#updateMouse(evt);
-                this.#toggleMastheadDisplay();
-            });
-        });
-        // 検索欄のフォーカスに関するイベント
-        const searchBoxEventTypes = ['focus', 'blur'];
-        searchBoxEventTypes.forEach( eventType => {
-            document.querySelector('input#search').addEventListener( eventType, evt => {
-                this.#toggleMastheadDisplay();
-            });
+        const eventTypes = ['mousemove', 'mouseenter', 'mouseleave', 'scroll', 'forcus', 'blur'];
+        eventTypes.forEach( evType => {
+            switch(evType) {
+                // マウスの位置に関するイベント
+                case 'mousemove': case 'mouseenter': case 'mouseleave':
+                    document.addEventListener( evType, e => {
+                        this.#updateMouse(e);
+                        this.#toggleMastheadDisplay(evType);
+                    });
+                    break;
+                // スクロールに関するイベント
+                case 'scroll':
+                    document.addEventListener( evType, e => {
+                        this.#toggleMastheadDisplay(evType);
+                    });
+                    break;
+                // 検索欄のフォーカスに関するイベント
+                case 'forcus': case 'blur':
+                    document.querySelector('input#search').addEventListener( evType, e => {
+                        this.#toggleMastheadDisplay(evType);
+                    });
+                    break;
+                default:
+                    new Error(`想定外のイベントが渡されました: ${evType}`);
+            }
         });
     }
 
@@ -516,46 +591,55 @@
     }
 
     /**
-     * 戻るシークボタンの表示を切り替える
+     * シークボタンの表示を切り替える
      */
-     #toggleSeekBackwardButtonDisplay() {
-        this.#toggleSeekButtonDisplay(
+     #toggleSeekButtonDisplay() {
+
+        // 挿入位置の設定
+        const insertPlace = {
+            control: this.#elements.player_right_controls,
+            beforeNode: this.#elements.player_settings_button,
+        };
+
+        // 戻るボタン
+        this.#toggleButtonDisplay(
             this.#settings.player.show_seek_backward_button,
-            -ExceedTube.SEEK_TIME.normal,
             ExceedTube.ButtonOptions.SEEK_BACKWARD.button,
             ExceedTube.ButtonOptions.SEEK_BACKWARD.svg,
+            () => { this.#seekVideo(-ExceedTube.SEEK_TIME.normal); },
+            insertPlace,
         );
-    }
-
-    /**
-     * 進むシークボタンの表示を切り替える
-     */
-     #toggleSeekForwardButtonDisplay() {
-        this.#toggleSeekButtonDisplay(
+        // 進むボタン
+        this.#toggleButtonDisplay(
             this.#settings.player.show_seek_forward_button,
-            ExceedTube.SEEK_TIME.normal,
             ExceedTube.ButtonOptions.SEEK_FORWARD.button,
             ExceedTube.ButtonOptions.SEEK_FORWARD.svg,
+            () => { this.#seekVideo(ExceedTube.SEEK_TIME.normal); },
+            insertPlace,
         );
     }
 
     /**
-     * シークボタンの表示を切り替える
-     * @param {Boolean} isShow - シークボタンの表示可否
-     * @param {Number} seekTime_sec - シーク時間(秒)
-     * @param {Object} buttonOptions - シークボタンに関する属性設定(連想配列)
-     * @param {Object} svgOptions - シークボタンの画像設定(連想配列)
+     * 動画プレイヤー内の独自ボタンの表示を切り替える
+     *  - 表示時、オブジェクトがなければ生成する
+     *  - 表示/非表示の切り替えは、display属性で切り替える
+     *
+     * @param {Boolean} isShow - ボタンの表示可否
+     * @param {Object} buttonOptions - ボタンに関する属性設定(連想配列)
+     * @param {Object} svgOptions - ボタンの画像設定(連想配列)
+     * @param {Function} clickFunc - 押下時の処理
+     * @param {Object} insertPlace - 表示位置の指定(連想配列)
      */
-     #toggleSeekButtonDisplay(isShow, seekTime_sec, buttonOptions, svgOptions) {
+     #toggleButtonDisplay(isShow, seekTime_sec, buttonOptions, svgOptions, clickFunc, insertPlace) {
         // Process if video page
         if( !this.#isVideoPage() ) {
             return;
         }
 
-        let seekButton = this.#elements.player.querySelector(`#${buttonOptions.id}`);
         // ボタン追加済なら表示切替
-        if( seekButton ) {
-            seekButton.style.display = isShow ? 'inline' : 'none';
+        const button = this.#elements.player.querySelector(`#${buttonOptions.id}`);
+        if( button ) {
+            button.style.display = isShow ? 'inline' : 'none';
             return;
         }
 
@@ -565,17 +649,18 @@
             // SVG画像を生成
             let svg = this.#generateSvg(ExceedTube.ButtonOptions.SVG, svgOptions);
 
-            // 戻るボタンを生成
-            let button = this.#generatePlayerButton({
+            // ボタンを生成
+            let playerButton = this.#generatePlayerButton({
                 title:      buttonOptions.title,
                 id:         buttonOptions.id,
                 child:      svg,
                 opacity:    1,
-                onclick:    () => { this.#seekVideo(seekTime_sec); },
+                onclick:    clickFunc,
             });
 
-            // 設定ボタンの横に配置する
-            this.#elements.player_right_controls.insertBefore(button, this.#elements.player_settings_button);
+            const controlNode = insertPlace.control || this.#elements.player_right_controls;
+            const insertNode  = insertPlace.beforeNode || this.#elements.player_settings_button;
+            controlNode.insertBefore(playerButton, insertNode);
         }
     }
 
@@ -586,8 +671,9 @@
      * @returns {Object} svg画像Element
      */
     #generateSvg(svgOptions, pathOptions) {
-        let svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        let path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const namespaceURI = 'http://www.w3.org/2000/svg';
+        let svg = document.createElementNS(namespaceURI, 'svg');
+        let path = document.createElementNS(namespaceURI, 'path');
 
         svg.setAttributesNS(null, svgOptions);
         path.setAttributesNS(null, pathOptions);
@@ -606,7 +692,7 @@
             return;
         }
 
-        let title = options.title || 'Button';
+        const title = options.title || 'Button';
 
         let button = document.createElement('button');
         button.className = `ytp-button ${ExceedTube.Attributes.Class.PLAYER_BUTTON}`;
@@ -648,6 +734,44 @@
     }
 
     /**
+     * マストヘッドの表示処理をsetTimeoutに登録する
+     * @param {Number} interval
+     */
+    #registShowMasthead(interval) {
+        // 非表示処理を中断する
+        if( this.#events.hide_masthead.isRunning() ) {
+            this.#events.hide_masthead.cancel();
+        }
+        // 表示処理 実行中は、何もしない
+        if( this.#events.show_masthead.isRunning() ) {
+            return;
+        }
+        this.#events.show_masthead.resist( () => {
+            this.#events.show_masthead.id = undefined;
+            this.#showMasthead();
+        }, interval);
+    }
+
+    /**
+     * マストヘッドの非表示処理をsetTimeoutに登録する
+     * @param {Number} interval
+     */
+    #registHideMasthead(interval) {
+        // 表示処理を中断する
+        if( this.#events.show_masthead.isRunning() ) {
+            this.#events.show_masthead.cancel();
+        }
+        // 非表示処理 実行中は、何もしない
+        if( this.#events.hide_masthead.isRunning() ) {
+            return;
+        }
+        this.#events.hide_masthead.resist( () => {
+            this.#events.hide_masthead.id = undefined;
+            this.#hideMasthead();
+        }, interval);
+    }
+
+    /**
      * マストヘッドを表示する
      */
     #showMasthead() {
@@ -656,17 +780,10 @@
             this.#elements.ytd_app.style.cssText += '--ytd-masthead-height: 56px;';
         }
     }
-
     /**
      * マストヘッドを隠す
      */
     #hideMasthead() {
-        if( !this.#isVideoPage() ) {
-            return;
-        }
-        if( this.#canShowMasthead() ) {
-            return;
-        }
         if( this.#elements.ytd_app ) {
             this.#elements.ytd_app.setAttribute('masthead-hidden');
             this.#elements.ytd_app.style.cssText += '--ytd-masthead-height: 0px;';
@@ -676,9 +793,14 @@
     /**
      * マストヘッドの表示を切り替える
      */
-    #toggleMastheadDisplay() {
-        !this.#settings.hide_masthead ||
-            this.#canShowMasthead() ? this.#showMasthead() : this.#hideMasthead()
+    #toggleMastheadDisplay(eventType) {
+        const show_interval = eventType === 'scroll'
+            ? this.#settings.masthead.video_page.show_interval_when_scrolling
+            : this.#settings.masthead.video_page.show_interval_when_hover
+        ;
+        !this.#settings.masthead.video_page.hide_display || this.#canShowMasthead(eventType)
+            ? this.#registShowMasthead(show_interval)
+            : this.#registHideMasthead(this.#settings.masthead.video_page.hide_interval_when_blur)
         ;
     }
 }
