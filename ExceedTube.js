@@ -13,6 +13,12 @@
 
 /**
  * Youtube カスタムクラス
+ * - 機能
+ *      - 動画プレイヤー内にシークボタンの設置(default:15sec)
+ *      - 矢印キー(←, →)によるシーク時間の変更(5sec -> 15sec)
+ *      - 修飾キー+矢印キー(←, →)によるシーク(shift:30sec, ctrl:60sec)
+ *      - Alt+矢印キー(←, →)時のシークの無効化(ブラウザの戻る/進むを優先)
+ *      - 動画ページではヘッダーを隠す(ホバーで表示)
  * @class ExceedTube
  */
  class ExceedTube extends M424Base {
@@ -180,12 +186,12 @@
             video_page: {
                 hide_display:                   true,   // 表示を隠すか
                 show_interval_when_scrolling:   100,    // スクロールしてから表示するまでの時間(マイナスで表示しない)
-                show_interval_when_hover:       100,     // ホバーしてから表示するまでの時間
-                hide_interval_when_blur:        100,     // ブラー(マウスが範囲外)してから隠すまでの時間
+                show_interval_when_hover:       100,    // ホバーしてから表示するまでの時間
+                hide_interval_when_blur:        100,    // ブラー(マウスが範囲外)してから隠すまでの時間
             },
-            // 動画ページで隠すか
-            hide_on_video_page: true,
-        }
+        },
+
+        load_completed: false,  // 画面読み込みが完了しているかの判定用フラグ
     };
 
     /**
@@ -307,6 +313,20 @@
 
         // マストヘッドの表示を切り替える
         this.#toggleMastheadDisplay();
+
+        // 画面読み込み完了時の処理
+        this.#settings.load_completed = false;
+        const pageLoadComplatedEventName = 'yt-service-request-completed';
+        const pageLoadComplated = () => {
+
+            if( this.#isVideoPage() ) {
+                // bug fix: Enhancer for Youtube の処理の影響でスクロールされてしまうため、元に戻す
+                window.scrollTo(0,0);
+            }
+            this.#settings.load_completed = true;
+            document.removeEventListener( pageLoadComplatedEventName, pageLoadComplated );
+        }
+        document.addEventListener( pageLoadComplatedEventName, pageLoadComplated );
     }
 
     /**
@@ -321,6 +341,7 @@
         // プレイヤーコントロールにボタン追加
         this.#toggleSeekButtonDisplay();
         this.#defineVideoButtonTooltipStyle();
+
     }
 
     /**
