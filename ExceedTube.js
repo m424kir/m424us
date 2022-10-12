@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.3.1
+// @version      0.3.2
 // @description  Youtube関連スクリプト群 - Youtube Custom Script
 // @author       M424
 // ==/UserScript==
@@ -185,13 +185,11 @@
             // 動画ページ内での動作について
             video_page: {
                 hide_display:                   true,   // 表示を隠すか
-                show_interval_when_scrolling:   100,    // スクロールしてから表示するまでの時間(マイナスで表示しない)
-                show_interval_when_hover:       100,    // ホバーしてから表示するまでの時間
+                show_interval_when_scrolling:   -1,     // スクロールしてから表示するまでの時間(マイナスで表示しない)
+                show_interval_when_hover:       250,    // ホバーしてから表示するまでの時間
                 hide_interval_when_blur:        100,    // ブラー(マウスが範囲外)してから隠すまでの時間
             },
         },
-
-        load_completed: false,  // 画面読み込みが完了しているかの判定用フラグ
     };
 
     /**
@@ -268,6 +266,7 @@
 
         // キーボードに関する初期処理
         this.#initializeKeyboard();
+
     }
 
     /**
@@ -314,19 +313,6 @@
         // マストヘッドの表示を切り替える
         this.#toggleMastheadDisplay();
 
-        // 画面読み込み完了時の処理
-        this.#settings.load_completed = false;
-        const pageLoadComplatedEventName = 'yt-service-request-completed';
-        const pageLoadComplated = () => {
-
-            if( this.#isVideoPage() ) {
-                // bug fix: Enhancer for Youtube の処理の影響でスクロールされてしまうため、元に戻す
-                window.scrollTo(0,0);
-            }
-            this.#settings.load_completed = true;
-            document.removeEventListener( pageLoadComplatedEventName, pageLoadComplated );
-        }
-        document.addEventListener( pageLoadComplatedEventName, pageLoadComplated );
     }
 
     /**
@@ -342,6 +328,14 @@
         this.#toggleSeekButtonDisplay();
         this.#defineVideoButtonTooltipStyle();
 
+        // bug fix-2022.10.13: Enhancer for Youtube の影響で処理の画面読み込み時のリサイズ処理にスクロールされてしまうため、元に戻す
+        const scrollTopFunc = () => {
+            if( window.pageYOffset > 0 ) {
+                window.scrollTo(0,0);
+                setTimeout( scrollTopFunc, 100 );
+            }
+        };
+        setTimeout( scrollTopFunc, 1000 );
     }
 
     /**
@@ -478,6 +472,7 @@
                 ret = ret || this.#isHoverMasthead() || this.#isFocusSearchBox();
             case 'scroll':
                 ret = ret || this.#settings.masthead.video_page.show_interval_when_scrolling >= 0 && this.#isScrollY();
+                break;
         }
         return ret;
     }
