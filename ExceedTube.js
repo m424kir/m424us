@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.3.3
+// @version      0.3.4
 // @description  Youtube関連スクリプト群 - Youtube Custom Script
 // @author       M424
 // ==/UserScript==
