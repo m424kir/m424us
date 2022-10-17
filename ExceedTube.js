@@ -47,7 +47,12 @@
      * [Consts] イベント
      */
     static Events = class {
+        // [CustomEvent] 独自定義のEvent名(document.addEventListenerからメソッド定義できる)
         static PAGE_UPDATED = 'exceedtube-page-updated';    // ページ更新イベント
+
+        // [LazyFunction] 遅延実行可能なEvent関数名
+        static SHOW_MASTHEAD = 'show-masthead';     // マストヘッドの表示処理
+        static HIDE_MASTHEAD = 'hide-masthead';     // マストヘッドの非表示処理
     }
 
     /**
@@ -188,17 +193,18 @@
                 hide_display:                   true,   // 表示を隠すか
                 show_interval_when_scrolling:   -1,     // スクロールしてから表示するまでの時間(マイナスで表示しない)
                 show_interval_when_hover:       250,    // ホバーしてから表示するまでの時間
-                hide_interval_when_blur:        100,    // ブラー(マウスが範囲外)してから隠すまでの時間
+                hide_interval_when_blur:        250,    // ブラー(マウスが範囲外)してから隠すまでの時間
             },
         },
     };
 
     #flag = {
-        user_scroll: false,     // ユーザーによるスクロール処理
+        // ユーザによるスクロール処理が行われたか(判定はマウスホイールによるスクロール処理で判定する)
+        user_scroll: false,
     }
 
     /**
-     * イベント管理
+     * イベント管理[LazyFunctionExecutor]
      */
     #events;
 
@@ -222,7 +228,22 @@
      * 初期処理
      */
     #initialize() {
-        // ページデータの更新イベント
+
+        this.#initializeCommon();
+
+        // マウスに関する初期処理
+        this.#initializeMouse();
+
+        // キーボードに関する初期処理
+        this.#initializeKeyboard();
+    }
+
+    #initializeCommon() {
+
+        // イベント管理者 - 初期化
+        this.#events = new LazyFunctionExecutor(this.scriptId);
+
+        // URL更新によるページ情報の更新処理
         document.addEventListener('yt-page-data-updated', () => {
 
             // ページ情報の更新
@@ -235,36 +256,21 @@
             document.dispatchEvent( new CustomEvent(ExceedTube.Events.PAGE_UPDATED) );
         });
 
-        // マウス関連のイベントを追加
-        this.#defineMouseEvent();
-
-        // キーボード関連のイベントを追加
-        this.#defineKeyboardEvent();
-
-        // マウスに関する初期処理
-        this.#initializeMouse();
-
-        // キーボードに関する初期処理
-        this.#initializeKeyboard();
-
-        this.#events = new LazyFunctionExecutor(this.scriptId);
-
         // bug fix-2022.10.17: Enhancer for Youtube - [プレーヤーを自動で拡大する]の影響
         //  で動画ページ読み込み時の画面拡大処理でスクロールされてしまうため、元に戻す
         document.addEventListener( 'wheel', () => {
             this.#flag.user_scroll = true;
-            setTimeout( () => {
-                this.#flag.user_scroll = false;
-            }, 250);
         });
         document.addEventListener( 'yt-action' , (e) => {
-            if( !this.#isVideoPage() ) {
+            // ユーザーによるスクロールが行われた場合、以降描画位置の調整を行わない
+            if( !this.#isVideoPage() || this.#flag.user_scroll ) {
                 return;
             }
             // 動画リサイズ処理
             if( e.detail.actionName === 'yt-window-resized' ) {
-                // ユーザーホイール中は処理しない
-                this.#flag.user_scroll || window.scrollTo(0,0);
+                // 画面リサイズにより、不要なスクロールが行われてしまうため、位置を戻す
+                window.scrollTo(0,0);
+                this.log("scrollTo");
             }
         });
 
@@ -274,15 +280,20 @@
      * マウス関連の初期実行処理
      */
     #initializeMouse() {
+        // マウス位置の初期化
         this.#mouse.x = -1;
         this.#mouse.y = -1;
+
+        // マウス関連のイベントを追加
+        this.#defineMouseEvent();
     }
 
     /**
      * キーボード関連の初期実行処理
      */
     #initializeKeyboard() {
-        // nop
+        // キーボード関連のイベントを追加
+        this.#defineKeyboardEvent();
     }
 
     /**
@@ -374,7 +385,7 @@
                         obsever.disconnect();
                     }
                 });
-                obsever.observe( this.#elements.player, options);
+                obsever.observe( this.#elements.player, options );
             }
         }
     }
@@ -493,8 +504,7 @@
         const current_sec  = this.#elements.video.currentTime;
         const duration_sec = this.#elements.video.duration;
         if( !current_sec || !duration_sec ) {
-            new Error('[ExceedTube][seekVideo] 動画情報が取得できませんでした.');
-            return;
+            throw Error('[ExceedTube][seekVideo] 動画情報が取得できませんでした.');
         }
         // 動画が終点(シーク可能範囲が0.1秒未満)で+シーク or 始点で-シークなら処理しない
         if( (sec > 0 && duration_sec - current_sec < 0.1) || (sec < 0 && current_sec < 0.1) ) {
@@ -534,7 +544,7 @@
                     });
                     break;
                 default:
-                    new Error(`想定外のイベントが渡されました: ${evType}`);
+                    throw SyntaxError(`想定外のイベントが渡されました: ${evType}`);
             }
         });
     }
@@ -748,14 +758,14 @@
      */
     #registShowMasthead(interval) {
         // 非表示処理を中断する
-        if( this.#events.isReady("hide_masthead") ) {
-            this.#events.delete("hide_masthead");
+        if( this.#events.isReady(ExceedTube.Events.HIDE_MASTHEAD) ) {
+            this.#events.delete(ExceedTube.Events.HIDE_MASTHEAD);
         }
         // 表示処理 実行中は、何もしない
-        if( this.#events.isReady("show_masthead") ) {
+        if( this.#events.isReady(ExceedTube.Events.SHOW_MASTHEAD) ) {
             return;
         }
-        this.#events.regist( this.#showMasthead, interval, {name: "show_masthead"} );
+        this.#events.regist( this.#showMasthead.bind(this), interval, {name: ExceedTube.Events.SHOW_MASTHEAD} );
     }
 
     /**
@@ -764,14 +774,14 @@
      */
     #registHideMasthead(interval) {
         // 非表示処理を中断する
-        if( this.#events.isReady("show_masthead") ) {
-            this.#events.delete("show_masthead");
+        if( this.#events.isReady(ExceedTube.Events.SHOW_MASTHEAD) ) {
+            this.#events.delete(ExceedTube.Events.SHOW_MASTHEAD);
         }
         // 非表示処理 実行中は、何もしない
-        if( this.#events.isReady("hide_masthead") ) {
+        if( this.#events.isReady(ExceedTube.Events.HIDE_MASTHEAD) ) {
             return;
         }
-        this.#events.regist( this.#hideMasthead, interval, {name: "hide_masthead"} );
+        this.#events.regist( this.#hideMasthead.bind(this), interval, {name: ExceedTube.Events.HIDE_MASTHEAD} );
     }
 
     /**
