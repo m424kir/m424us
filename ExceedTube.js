@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.3.2
+// @version      0.3.3
 // @description  Youtube関連スクリプト群 - Youtube Custom Script
 // @author       M424
 // ==/UserScript==
@@ -10,6 +10,7 @@
  * 読込元のスクリプトに以下の定義を追加してください。
  */
 // @require      https://raw.githubusercontent.com/m424kir/m424us/master/M424Common.js
+// @require      https://raw.githubusercontent.com/m424kir/m424us/master/LazyFunctionExecutor.js
 
 /**
  * Youtube カスタムクラス
@@ -192,35 +193,14 @@
         },
     };
 
+    #flag = {
+        user_scroll: false,     // ユーザーによるスクロール処理
+    }
+
     /**
-     * イベント
+     * イベント管理
      */
-    #events = {
-        /**
-         * マストヘッドの表示イベント
-         */
-        show_masthead: {
-            id: undefined,
-            isRunning: function() { return (this.id !== undefined && typeof this.id === 'number'); },
-            resist: function(func, interval) { this.id = window.setTimeout(func, interval); },
-            cancel: function() {
-                window.clearTimeout(this.id);
-                this.id = undefined;
-            },
-        },
-        /**
-         * マストヘッドの非表示イベント
-         */
-        hide_masthead: {
-            id: undefined,
-            isRunning: function() { return (this.id !== undefined && typeof this.id === 'number'); },
-            resist: function(func, interval) { this.id = window.setTimeout(func, interval); },
-            cancel: function() {
-                window.clearTimeout(this.id);
-                this.id = undefined;
-            },
-        },
-    };
+    #events;
 
     // マウス情報
     #mouse = {
@@ -266,6 +246,27 @@
 
         // キーボードに関する初期処理
         this.#initializeKeyboard();
+
+        this.#events = new LazyFunctionExecutor(SCRIPTID);
+
+        // bug fix-2022.10.17: Enhancer for Youtube - [プレーヤーを自動で拡大する]の影響
+        //  で動画ページ読み込み時の画面拡大処理でスクロールされてしまうため、元に戻す
+        document.addEventListener( 'wheel', () => {
+            this.#flag.user_scroll = true;
+            setTimeout( () => {
+                this.#flag.user_scroll = false;
+            }, 250);
+        });
+        document.addEventListener( 'yt-action' , (e) => {
+            if( !this.#isVideoPage() ) {
+                return;
+            }
+            // 動画リサイズ処理
+            if( e.detail.actionName === 'yt-window-resized' ) {
+                // ユーザーホイール中は処理しない
+                this.#flag.user_scroll || window.scrollTo(0,0);
+            }
+        });
 
     }
 
@@ -327,15 +328,6 @@
         // プレイヤーコントロールにボタン追加
         this.#toggleSeekButtonDisplay();
         this.#defineVideoButtonTooltipStyle();
-
-        // bug fix-2022.10.13: Enhancer for Youtube の影響で処理の画面読み込み時のリサイズ処理にスクロールされてしまうため、元に戻す
-        const scrollTopFunc = () => {
-            if( window.pageYOffset > 0 ) {
-                window.scrollTo(0,0);
-                setTimeout( scrollTopFunc, 100 );
-            }
-        };
-        setTimeout( scrollTopFunc, 1000 );
     }
 
     /**
@@ -756,17 +748,14 @@
      */
     #registShowMasthead(interval) {
         // 非表示処理を中断する
-        if( this.#events.hide_masthead.isRunning() ) {
-            this.#events.hide_masthead.cancel();
+        if( this.#events.isReady("hide_masthead") ) {
+            this.#events.delete("hide_masthead");
         }
         // 表示処理 実行中は、何もしない
-        if( this.#events.show_masthead.isRunning() ) {
+        if( this.#events.isReady("show_masthead") ) {
             return;
         }
-        this.#events.show_masthead.resist( () => {
-            this.#events.show_masthead.id = undefined;
-            this.#showMasthead();
-        }, interval);
+        this.#events.regist( this.#showMasthead, interval, false );
     }
 
     /**
@@ -774,18 +763,15 @@
      * @param {Number} interval
      */
     #registHideMasthead(interval) {
-        // 表示処理を中断する
-        if( this.#events.show_masthead.isRunning() ) {
-            this.#events.show_masthead.cancel();
+        // 非表示処理を中断する
+        if( this.#events.isReady("show_masthead") ) {
+            this.#events.delete("show_masthead");
         }
         // 非表示処理 実行中は、何もしない
-        if( this.#events.hide_masthead.isRunning() ) {
+        if( this.#events.isReady("hide_masthead") ) {
             return;
         }
-        this.#events.hide_masthead.resist( () => {
-            this.#events.hide_masthead.id = undefined;
-            this.#hideMasthead();
-        }, interval);
+        this.#events.regist( this.#hideMasthead, interval, false );
     }
 
     /**

@@ -8,6 +8,11 @@
 // ==/UserScript==
 
 /**
+ * 読込元のスクリプトに以下の定義を追加してください。
+ */
+// @require      https://raw.githubusercontent.com/m424kir/m424us/master/M424Common.js
+
+/**
  * 遅延実行可能な関数クラス
  */
 class LazyFunction {
@@ -56,7 +61,7 @@ class LazyFunction {
      * @param {Boolean} isRepeat - 繰り返し実行するか
      * @param  {...any} funcArgs - 関数の引数(省略可)
      */
-    regist(func, delay_msec, isRepeat, ...funcArgs) {
+    regist(func, delay_msec, isRepeat = false, ...funcArgs) {
 
         this.#isRepeat = isRepeat;
         this.#delay    = delay_msec;
@@ -160,6 +165,16 @@ class LazyFunctionExecutor extends M424Base {
             this.#lazyFunctions = array.array;
         }
         return ret;
+    }
+
+    /**
+     * 関数が登録され、実行待ち状態かを返す
+     * @param {String} name - 登録名
+     * @returns true: 実行待ち状態
+     */
+    isReady(name) {
+        const target = this.#lazyFunctions.find( f => f.name === name );
+        return target ? target.isReady() : false;
     }
 
 };
