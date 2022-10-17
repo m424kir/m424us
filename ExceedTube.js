@@ -755,7 +755,7 @@
         if( this.#events.isReady("show_masthead") ) {
             return;
         }
-        this.#events.regist( this.#showMasthead, interval );
+        this.#events.regist( this.#showMasthead, interval, {name: "show_masthead"} );
     }
 
     /**
@@ -771,7 +771,7 @@
         if( this.#events.isReady("hide_masthead") ) {
             return;
         }
-        this.#events.regist( this.#hideMasthead, interval );
+        this.#events.regist( this.#hideMasthead, interval, {name: "hide_masthead"} );
     }
 
     /**
