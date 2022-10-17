@@ -131,11 +131,12 @@ class LazyFunctionExecutor extends M424Base {
      * @param  {...any} funcArgs - 関数の引数
      * @returns 関数の登録名
      */
-    regist(func, delay_msec, options, ...funcArgs) {
+    regist(func, delay_msec, options = {}, ...funcArgs) {
 
         const funcName = options.name || M424.Math.randomString();
         const isRepeat = options.afterExecution === 'repeat';
         const isDelete = ['delete', undefined].includes(options.afterExecution);
+        // console.log(`${funcName}: repeat:${isRepeat} delete:${isDelete}`);
         const f = () => {
             func( ...funcArgs );
             if( isDelete ) {
