@@ -35,6 +35,8 @@ class M424Base {
         this.#isDebug = isDebugMode;
     }
 
+    get scriptId() { return this.#scriptId; }
+
     /**
      * infoログ出力
      * @param  {...any} msg 出力メッセージ

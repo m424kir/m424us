@@ -247,7 +247,7 @@
         // キーボードに関する初期処理
         this.#initializeKeyboard();
 
-        this.#events = new LazyFunctionExecutor(SCRIPTID);
+        this.#events = new LazyFunctionExecutor(this.scriptId);
 
         // bug fix-2022.10.17: Enhancer for Youtube - [プレーヤーを自動で拡大する]の影響
         //  で動画ページ読み込み時の画面拡大処理でスクロールされてしまうため、元に戻す
