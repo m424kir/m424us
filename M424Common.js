@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         M424Common
-// @version      1.3
+// @version      1.4
 // @description  commonクラス
 // @author       M424
 // ==/UserScript==
@@ -100,6 +100,31 @@ class M424Consts {
  * @namespace M424
  */
 const M424 = {
+
+    DOM: {
+        /**
+         * 指定要素が取得できるまで待機する(最大待機時間有)
+         * @param {String} selector 取得したい要素を特定するセレクタ
+         * @param {Number} maxWait_msec 最大待機時間(ミリ秒)
+         * @returns {Promise} 取得セレクタ(見つからなかった場合はNull)
+         */
+        async querySelectorAsync(selectors, baseElement = document, maxWait_msec = 5000) {
+
+            if( M424.Object.isNullOrUndefined(baseElement) ) {
+                baseElement = document;
+            }
+
+            let node;
+            const waitTime_msec  = 10;
+            const startTime_msec = Date.now();
+            while( (Date.now() - startTime_msec) < maxWait_msec ) {
+                node = baseElement?.querySelector(selectors) ?? null;
+                if( node ) break;
+                await M424.sleep(waitTime_msec);
+            }
+            return new Promise( resolve => { resolve( node ); });
+        },
+    },
 
     Object: {
 

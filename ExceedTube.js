@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.3.4
+// @version      0.4
 // @description  Youtube関連スクリプト群 - Youtube Custom Script
 // @author       M424
 // ==/UserScript==
@@ -25,23 +25,84 @@
  class ExceedTube extends M424Base {
 
     /**
+     * ユーザ設定
+     * @type {object}
+     */
+     #settings = {
+        // プレイヤー情報
+        player: {
+            // シークボタンの表示可否
+            show_seek_backward_button: true,
+            show_seek_forward_button:  true,
+            // コメント再読込ボタンの表示可否
+            show_reload_comment_button:  true,
+        },
+
+        // マストヘッド
+        masthead: {
+            // 動画ページ内での動作について
+            video_page: {
+                hide_display:                   true,   // 表示を隠すか
+                show_interval_when_scrolling:   -1,     // スクロールしてから表示するまでの時間(マイナスで表示しない)
+                show_interval_when_hover:       250,    // ホバーしてから表示するまでの時間
+                hide_interval_when_blur:        250,    // ブラー(マウスが範囲外)してから隠すまでの時間
+            },
+        },
+    };
+
+    /**
      * [Consts] Element属性
      */
     static Attributes = class {
+        static Style = class {
+            static GUIDE_WIDTH            = '--app-drawer-width';
+            static MINI_GUIDE_WIDTH       = '--ytd-mini-guide-width';
+            static MASTHEAD_HEIGHT        = '--ytd-masthead-height';
+
+            static THUMBNAIL_WIDTH        = '--m424-subscriptions-thumbnail-width';
+            static THUMBNAIL_HEIGHT       = '--m424-subscriptions-thumbnail-height';
+        };
         static Class = class {
             static TOOLTIP_STYLE          = 'm424-style-tooltip';             // ツールチップ用CSS
             static PLAYER_BUTTON          = 'm424-player-button';             // プレイヤー内ボタン
             static PLAYER_BUTTON_TOOLTIP  = 'm424-player-button--tooltip';    // プレイヤー内ボタン用ツールチップ
         };
         static ID = class {
+            static SVG_DEFS               = 'm424-svg-defs';                  // SVG画像の定義
             static SEEK_BACKWARD_BUTTON   = 'm424-seek-backward-button';      // シークボタン(戻る)
             static SEEK_FORWARD_BUTTON    = 'm424-seek-forward-button';       // シークボタン(進む)
+            static RELOAD_COMMENT_BUTTON  = 'm424-reload-comment-button';     // コメント再読込
         };
         static Title = class {
             static SEEK_BACKWARD_BUTTON   = '15秒戻る';                       // シークボタン(戻る)
             static SEEK_FORWARD_BUTTON    = '15秒進む';                       // シークボタン(進む)
+            static RELOAD_COMMENT_BUTTON  = 'コメント再読込';                 // コメント再読込
         };
     }
+
+    static Status = class {
+        // 配信形態
+        static get STREAMING() {
+            return {
+                LIVE:    'live',        // 生配信中
+                ARCHIVE: 'archive',     // アーカイブ
+                VIDEO:   'video',       // 動画
+            };
+        };
+        // ページタイプ
+        static get PAGE() {
+            return {
+                HOME:           'home',             // ホーム
+                VIDEO:          'video',            // 動画
+                SHORTS:         'shorts',           // ショート
+                SUBSCRIPTIONS:  'subscriptions',    // 登録チャンネル
+                CHANNELS:       'channels',         // ユーザーチャンネル
+                HISTORY:        'history',          // 履歴
+                PLAYLIST:       'playlist',         // プレイリスト
+                OTHER:          'other',            // その他
+            }
+        }
+    };
 
     /**
      * [Consts] イベント
@@ -66,6 +127,17 @@
         static PLAYER_THUMBNAIL         = '.ytp-cued-thumbnail-overlay-image';      // サムネイル
         static PLAYER_SETTINGS_BUTTON   = '.ytp-settings-button'                    // 設定ボタン
         static PLAYER_SUBTITLES_BUTTON  = '.ytp-subtitles-button';                  // 字幕ボタン
+        static COMMENT_FRAME            = 'iframe#chatframe';                       // コメント欄
+        static YTD_APP                  = 'ytd-app';
+        static MASTHEAD                 = 'ytd-masthead#masthead';
+        static GUIDE                    = 'tp-yt-app-drawer#guide #contentContainer';
+        static MINI_GUIDE               = 'ytd-mini-guide-renderer.ytd-app';
+        static MINIPLAYER               = 'ytd-miniplayer.ytd-app';
+        static PAGE_MANAGER             = 'ytd-page-manager#page-manager';
+        static BROWSE                   = ':is(ytd-watch-flexy, ytd-browse)[role=main]';
+        static PRIMARY                  = 'ytd-watch-flexy #primary';
+        static SECONDARY                = 'ytd-watch-flexy #secondary';
+        static TWO_COLUMN_BROWSE        = 'ytd-two-column-browse-results-renderer';
     };
 
     /**
@@ -88,19 +160,22 @@
     static Regex = class {
         static VIDEO_ID     = /[?&]v=([^&]+)/;
         static PLAYLIST_ID  = /[?&]list=([^&]+)/;
-        static CHANNEL      = /(user|channel|c)/;
+        static CHANNEL_ID   = /(user|channel|c)\/([0-9a-zA-Z]*)/;
+        static GRID_COLUMNS = /^grid\-(?<division_number>\d)\-columns$/;
     };
 
     /**
-     * [Consts] Pathnameの種類一覧
+     * [Consts] location.pathname 判別用
      */
-     static Pathnames = [
-        { name: 'home',           path: '/' },
-        { name: 'video',          path: '/watch' },
-        { name: 'short',         regex: /shorts/ },
-        { name: 'subscriptions',  path: '/feed/subscriptions' },
-        { name: 'channel',       regex: /^\/(user|channel|c)\// },
-        { name: 'other',         regex: /.*/ },
+    static Pathnames = [
+        { name: ExceedTube.Status.PAGE.HOME,           path: '/' },                     // ホーム
+        { name: ExceedTube.Status.PAGE.VIDEO,          path: '/watch' },                // 動画
+        { name: ExceedTube.Status.PAGE.SHORTS,        regex: /^\/short\// },            // ショート
+        { name: ExceedTube.Status.PAGE.SUBSCRIPTIONS,  path: '/feed/subscriptions' },   // 登録チャンネル
+        { name: ExceedTube.Status.PAGE.CHANNELS,      regex: /^\/(user|channel|c)\// }, // ユーザーチャンネル
+        { name: ExceedTube.Status.PAGE.HISTORY,        path: '/feed/history' },         // 履歴
+        { name: ExceedTube.Status.PAGE.PLAYLIST,       path: '/playlist' },             // プレイリスト
+        { name: ExceedTube.Status.PAGE.OTHER,         regex: /.*/ },                    // その他
     ];
 
     /**
@@ -109,33 +184,43 @@
     static SEEK_TIME = { normal: 15, shift: 30, ctrl: 60 };
 
     /**
-     * [Consts] ボタンオプション
+     * [Consts] SVG画像オブジェクト定義
      */
-    static ButtonOptions = class {
-        static SVG = {
+    static SVG = class {
+        static ATTRIBUTES = {
             version:    '1,1',
             height:     '100%',
             width:      '100%',
             viewBox:    '0 0 16 16',
         };
         static SEEK_BACKWARD = {
-            button: {
+            ATTRIBUTES: {
                 id:     ExceedTube.Attributes.ID.SEEK_BACKWARD_BUTTON,
                 title:  ExceedTube.Attributes.Title.SEEK_BACKWARD_BUTTON,
             },
-            svg: {
+            PATH: {
                 fill:   '#eee',
                 d:      'm8 8 7 4V4zM1 8l7 4V4z',
             },
         };
         static SEEK_FORWARD = {
-            button: {
+            ATTRIBUTES: {
                 id:     ExceedTube.Attributes.ID.SEEK_FORWARD_BUTTON,
                 title:  ExceedTube.Attributes.Title.SEEK_FORWARD_BUTTON,
             },
-            svg: {
+            PATH: {
                 fill:   '#eee',
                 d:      'M7.875 8 .938 12V4C.875 4 7.875 8 7.875 8zm7 0-7 4V4z',
+            },
+        };
+        static RELOAD_COMMENT = {
+            ATTRIBUTES: {
+                id:     ExceedTube.Attributes.ID.RELOAD_COMMENT_BUTTON,
+                title:  ExceedTube.Attributes.Title.RELOAD_COMMENT_BUTTON,
+            },
+            PATH: {
+                fill:   '#424242',
+                d:      'M1.5 1h13l.5.5v10l-.5.5H7.71l-2.86 2.85L4 14.5V12H1.5l-.5-.5v-10l.5-.5Zm6 10H14V2H2v9h2.5l.5.5v1.79l2.15-2.14.35-.15ZM13 4H3v1h10V4ZM3 6h10v1H3V6Zm7 2H3v1h7V8Z',
             },
         };
     };
@@ -172,30 +257,11 @@
     #elements = {};
 
     /**
-     * 各種設定
-     * @type {object}
+     * 各種情報
      */
-    #settings = {
-        // 現在のページタイプ
-        page_type: '',
-
-        // プレイヤー情報
-        player: {
-            // シークボタンの表示可否
-            show_seek_backward_button: true,
-            show_seek_forward_button:  true,
-        },
-
-        // マストヘッド
-        masthead: {
-            // 動画ページ内での動作について
-            video_page: {
-                hide_display:                   true,   // 表示を隠すか
-                show_interval_when_scrolling:   -1,     // スクロールしてから表示するまでの時間(マイナスで表示しない)
-                show_interval_when_hover:       250,    // ホバーしてから表示するまでの時間
-                hide_interval_when_blur:        250,    // ブラー(マウスが範囲外)してから隠すまでの時間
-            },
-        },
+    #info = {
+        page: {},   // ページ情報
+        video: {},  // 動画情報
     };
 
     #flag = {
@@ -238,16 +304,19 @@
         this.#initializeKeyboard();
     }
 
+    /**
+     * 初期処理 - 汎用
+     */
     #initializeCommon() {
 
         // イベント管理者 - 初期化
         this.#events = new LazyFunctionExecutor(this.scriptId);
 
         // URL更新によるページ情報の更新処理
-        document.addEventListener('yt-page-data-updated', () => {
+        document.addEventListener('yt-page-data-updated', async () => {
 
             // ページ情報の更新
-            this.#updatePageInfo();
+            await this.#updatePageInfo();
 
             // ページ表示に関する状態の更新処理
             this.#updatePageDisplay();
@@ -255,25 +324,6 @@
             // ページ遷移に関するイベントを発行
             document.dispatchEvent( new CustomEvent(ExceedTube.Events.PAGE_UPDATED) );
         });
-
-        // bug fix-2022.10.17: Enhancer for Youtube - [プレーヤーを自動で拡大する]の影響
-        //  で動画ページ読み込み時の画面拡大処理でスクロールされてしまうため、元に戻す
-        document.addEventListener( 'wheel', () => {
-            this.#flag.user_scroll = true;
-        });
-        document.addEventListener( 'yt-action' , (e) => {
-            // ユーザーによるスクロールが行われた場合、以降描画位置の調整を行わない
-            if( !this.#isVideoPage() || this.#flag.user_scroll ) {
-                return;
-            }
-            // 動画リサイズ処理
-            if( e.detail.actionName === 'yt-window-resized' ) {
-                // 画面リサイズにより、不要なスクロールが行われてしまうため、位置を戻す
-                window.scrollTo(0,0);
-                this.log("scrollTo");
-            }
-        });
-
     }
 
     /**
@@ -332,12 +382,13 @@
      */
     #updateVideoPageDisplay() {
 
-        if( !this.#isVideoPage() ) {
+        if( !this.isVideoPage() ) {
             return;
         }
 
         // プレイヤーコントロールにボタン追加
         this.#toggleSeekButtonDisplay();
+        this.#toggleReloadCommentButtonDisplay();
         this.#defineVideoButtonTooltipStyle();
     }
 
@@ -345,7 +396,7 @@
      * Youtubeページの情報更新
      *  - ページ更新のイベント発生時にページ情報を更新する
      */
-    #updatePageInfo() {
+    async #updatePageInfo() {
 
         // URL情報の更新
         this.#location = location;
@@ -357,36 +408,138 @@
         this.#settings.video_id = this.#getVideoId(this.#location.href);
 
         // ページのElement情報を更新
-        this.#updatePageElements();
+        await this.#updatePageElements();
+
+        // ページデータの更新
+        await this.#updatePageData();
     }
 
     /**
-     * ページのElement情報を更新する
+     * [async] ページ情報を更新する
      */
-    #updatePageElements() {
+    async #updatePageData() {
+        const css = window.getComputedStyle(this.#elements.ytd_app);
+        this.#info.page.guide.width      = css.getPropertyValue(ExceedTube.Attributes.Style.GUIDE_WIDTH);
+        this.#info.page.mini_guide.width = css.getPropertyValue(ExceedTube.Attributes.Style.MINI_GUIDE_WIDTH);
+        this.#info.page.masthead.height  = css.getPropertyValue(ExceedTube.Attributes.Style.MASTHEAD_HEIGHT);
 
-        this.#elements.ytd_app = document.querySelector('ytd-app');
+        this.#info.page.scrollbar.width    = window.innerWidth - document.body.clientWidth;
+        this.#info.page.page_manager.width = this.#elements.page_manager.clientWidth;
 
-        // 動画プレイヤーに関するElement情報を更新
-        if( this.#isVideoPage() ) {
-            this.#elements.player                 = document.querySelector(ExceedTube.Selector.PLAYER);
-            this.#elements.video                  = this.#elements.player.querySelector(ExceedTube.Selector.VIDEO);
-            this.#elements.player_left_controls   = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_LEFT_CONTROLS);
-            this.#elements.player_right_controls  = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_RIGHT_CONTROLS);
-            this.#elements.player_settings_button = this.#elements.player.querySelector(ExceedTube.Selector.PLAYER_SETTINGS_BUTTON);
+        // 動画情報を更新
+        await this.#updateVideoInfo();
+        // 登録チャンネルのページ情報を更新
+        await this.#updateSubscriptionsInfo();
+        this.debug(this.#info.page);
 
-            // 動画情報が取得できない場合、情報が更新されるまで監視する
-            if( !this.#elements.video || isNaN(this.#elements.video.duration) ) {
-                const options = { attributes: true, childList: true, subtree: true };
-                const obsever = new MutationObserver( (mutations) => {
-                    const video = document.querySelector(ExceedTube.Selector.VIDEO);
-                    if( video && !isNaN(video.duration) ) {
-                        this.#updatePageElements();
-                        obsever.disconnect();
+    }
+
+    /**
+     * [async] 動画ページから動画情報を取得する
+     */
+    async #updateVideoInfo() {
+
+        if( !this.isVideoPage() ) {
+            this.#info.video = {};
+            return;
+        }
+
+        const videoInfoNode = await M424.DOM.querySelectorAsync('script#scriptTag');
+        if( !videoInfoNode ) {
+            throw new Error('動画情報を取得できませんでした.');
+        }
+        const videoInfo = JSON.parse(videoInfoNode);
+        this.#info.video.title          = videoInfo.name;                       // 動画 - タイトル
+        this.#info.video.description    = videoInfo.description;                // 動画 - 説明
+        this.#info.video.author         = videoInfo.author;                     // チャンネル名
+        this.#info.video.url            = videoInfo.embedUrl;                   // 動画 - URL
+        this.#info.video.thumbnailUrl   = videoInfo.thumbnailUrl[0];            // 動画 - サムネイルURL
+        this.#info.video.duration       = moment.duration(videoInfo.duration);  // 動画 - 時間 (配信中は"PT0S")
+        this.#info.video.genre          = videoInfo.genre;                      // 動画 - ジャンル
+        this.#info.video.status         = ExceedTube.Status.STREAMING.VIDEO;    // 配信状況(動画、アーカイブ、配信中)
+
+        if( videoInfo.publication ) {
+            this.#info.video.status = ExceedTube.Status.STREAMING.ARCHIVE;
+            this.#info.video.startDate = moment(videoInfo.publication[0].startDate);
+            if( videoInfo.duration !== 'PT0S') {
+                this.#info.video.status = ExceedTube.Status.STREAMING.LIVE;
+                this.#info.video.endDate = moment(videoInfo.publication[0].endDate);
+            }
+        }
+        this.debug(this.#info.video);
+    }
+
+    /**
+     * [async] ページのElement情報を更新する
+     */
+    async #updatePageElements() {
+
+        this.#elements.ytd_app      = await M424.DOM.querySelectorAsync(ExceedTube.Selector.YTD_APP);
+        this.#elements.masthead     = await M424.DOM.querySelectorAsync(ExceedTube.Selector.MASTHEAD);
+        this.#elements.guide        = await M424.DOM.querySelectorAsync(ExceedTube.Selector.GUIDE);
+        this.#elements.mini_guide   = await M424.DOM.querySelectorAsync(ExceedTube.Selector.MINI_GUIDE);
+        this.#elements.miniplayer   = await M424.DOM.querySelectorAsync(ExceedTube.Selector.MINIPLAYER);
+        this.#elements.page_manager = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PAGE_MANAGER);
+        this.#elements.browse       = await M424.DOM.querySelectorAsync(ExceedTube.Selector.BROWSE);
+
+        // 動画ページに関するElement情報を更新
+        if( this.isVideoPage() ) {
+            this.#elements.primary                = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PRIMARY);
+            this.#elements.secondary              = await M424.DOM.querySelectorAsync(ExceedTube.Selector.SECONDARY);
+
+            // 動画プレイヤー
+            this.#elements.player                 = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PLAYER);
+            this.#elements.video                  = await M424.DOM.querySelectorAsync(ExceedTube.Selector.VIDEO);
+            this.#elements.player_left_controls   = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PLAYER_LEFT_CONTROLS);
+            this.#elements.player_right_controls  = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PLAYER_RIGHT_CONTROLS);
+            this.#elements.player_settings_button = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PLAYER_SETTINGS_BUTTON);
+
+            // 配信 or アーカイブ
+            if( this.isStreaming() ) {
+                // コメント
+                this.#elements.comment = await M424.DOM.querySelectorAsync(COMMENT_FRAME);
+            }
+        }
+    }
+
+    /**
+     * [async] 登録チャンネルのページ情報を更新する
+     */
+    async #updateSubscriptionsInfo() {
+
+        if( !this.isSubscriptionsPage() ) return;
+
+        /**
+         *  登録チャンネルの動画サムネイルサイズを更新する
+         */
+        // 1⃣動画コンテンツの幅・高さを取得
+        const [thumbnailWidth, thumbnailHeight] = (async () => {
+
+            const mainNode = await M424.DOM.querySelectorAsync(ExceedTube.Selector.TWO_COLUMN_BROWSE, this.#elements.browse);
+
+            // 1行に表示するアイテム数を取得する
+            const columnItem = (() => {
+                let ret = 1;
+                mainNode?.classList.forEach( cls => {
+                    const matches = cls.match(ExceedTube.Regex.GRID_COLUMNS);
+                    if( matches?.groups ) {
+                        ret = parseInt(matches.groups.division_number);
                     }
                 });
-                obsever.observe( this.#elements.player, options );
-            }
+                return ret;
+            })();
+
+            const contentBase = Math.floor( (mainNode.clientWidth / columnItem - 16) / 16 ) ?? 13;
+            if( contentBase > 18 ) { contentBase = 13; }
+            return [contentBase * 16, contentBase * 9];
+        })();
+
+        // 取得したサイズをサムネイルに適用
+        const thumbnail = this.#info.page.subscriptions.thumbnail;
+        if( thumbnailWidth != thumbnail.width || thumbnailHeight != thumbnail.height ) {
+            this.#elements.browse.style.setProperty(ExceedTube.Attributes.Style.THUMBNAIL_WIDTH,  `${thumbnailWidth}px`,  'important');
+            this.#elements.browse.style.setProperty(ExceedTube.Attributes.Style.THUMBNAIL_HEIGHT, `${thumbnailHeight}px`, 'important');
+            this.log("サムネイルサイズ更新!!!");
         }
     }
 
@@ -394,18 +547,26 @@
      * 現在のページの種類を取得/更新する
      */
      #updatePageType() {
-        this.#settings.page_type = ExceedTube.Pathnames.find( e => e.regex
+        this.#info.page.type = ExceedTube.Pathnames.find( e => e.regex
             ? e.regex.test(this.#location.pathname)
             : e.path === this.#location.pathname
-        ).name || 'other';
+        ).name || ExceedTube.Status.PAGE.OTHER;
     }
 
     /**
-     * 現在のページが動画のページかどうかを返す
+     * 現在のページが動画ページかどうかを返す
      * @returns true: 現在のページが動画ページ
      */
-    #isVideoPage() {
-        return ( this.#settings.page_type === 'video' && this.#settings.video_id );
+    isVideoPage() {
+        return ( this.#info.page.type === ExceedTube.Status.PAGE.VIDEO && this.#settings.video_id );
+    }
+
+    /**
+     * 現在のページが「登録チャンネル」かどうかを返す
+     * @returns true: 現在のページが「登録チャンネル」
+     */
+     isSubscriptionsPage() {
+        return ( this.#info.page.type === ExceedTube.Status.PAGE.SUBSCRIPTIONS );
     }
 
     /**
@@ -445,6 +606,15 @@
     }
 
     /**
+     * 動画が配信(アーカイブ含む)であるか判定する
+     *
+     * @returns {Boolean} true: 生配信中 or 配信アーカイブ
+     */
+    isStreaming() {
+        return ( this.#info.video.status !== ExceedTube.Status.STREAMING.VIDEO );
+    }
+
+    /**
      * Y軸方向にスクロールされているか
      * @returns true: スクロールされている
      */
@@ -462,7 +632,7 @@
      * @returns true: マストヘッドが表示可能
      */
      #canShowMasthead(eventType) {
-        if( !this.#isVideoPage() ) {
+        if( !this.isVideoPage() ) {
             return true;
         }
         let ret = false;
@@ -487,7 +657,7 @@
      * @returns {string} 動画ID or null
      */
     #getVideoId(url) {
-        return this.#settings.page_type === 'video'
+        return this.#info.page.type === ExceedTube.Status.PAGE.VIDEO
             ? url.match(ExceedTube.Regex.VIDEO_ID)[1] || null
             : null
         ;
@@ -498,7 +668,7 @@
      * @param {Number} sec
      */
     #seekVideo(sec) {
-        if( !this.#isVideoPage() ) {
+        if( !this.isVideoPage() ) {
             return;
         }
         const current_sec  = this.#elements.video.currentTime;
@@ -557,7 +727,7 @@
         // キー入力イベント
         document.addEventListener('keydown', evt => {
 
-            if( !this.#isVideoPage() ) {
+            if( !this.isVideoPage() ) {
                 return;
             }
 
@@ -610,6 +780,42 @@
     }
 
     /**
+     * コメント再読込ボタンの表示を切り替える
+     */
+    #toggleReloadCommentButtonDisplay() {
+
+        if( !this.isStreaming() ) {
+            return;
+        }
+
+        // 挿入位置の設定
+        const insertPlace = {
+            control:    this.#elements.player_right_controls,
+            beforeNode: this.#elements.player_settings_button,
+        };
+
+        // コメント再読込ボタン
+        this.#toggleButtonDisplay(
+            this.#settings.player.show_reload_comment_button,
+            ExceedTube.SVG.RELOAD_COMMENT.ATTRIBUTES,
+            ExceedTube.SVG.RELOAD_COMMENT.PATH,
+            () => { this.#reloadComment(); },
+            insertPlace,
+        );
+    }
+    /**
+     * コメント再読込を再読込する
+     */
+    #reloadComment() {
+        if( this.isStreaming() ) {
+            const comment = this.#elements.comment.contentWindow.document;
+            const selectors = 'tp-yt-paper-listbox#menu a.iron-selected';
+            const selectedCommentMenu = M424.DOM.querySelectorAsync(selectors, comment);
+            selectedCommentMenu.click();
+        }
+    }
+
+    /**
      * シークボタンの表示を切り替える
      */
      #toggleSeekButtonDisplay() {
@@ -623,16 +829,16 @@
         // 戻るボタン
         this.#toggleButtonDisplay(
             this.#settings.player.show_seek_backward_button,
-            ExceedTube.ButtonOptions.SEEK_BACKWARD.button,
-            ExceedTube.ButtonOptions.SEEK_BACKWARD.svg,
+            ExceedTube.SVG.SEEK_BACKWARD.ATTRIBUTES,
+            ExceedTube.SVG.SEEK_BACKWARD.PATH,
             () => { this.#seekVideo(-ExceedTube.SEEK_TIME.normal); },
             insertPlace,
         );
         // 進むボタン
         this.#toggleButtonDisplay(
             this.#settings.player.show_seek_forward_button,
-            ExceedTube.ButtonOptions.SEEK_FORWARD.button,
-            ExceedTube.ButtonOptions.SEEK_FORWARD.svg,
+            ExceedTube.SVG.SEEK_FORWARD.ATTRIBUTES,
+            ExceedTube.SVG.SEEK_FORWARD.PATH,
             () => { this.#seekVideo(ExceedTube.SEEK_TIME.normal); },
             insertPlace,
         );
@@ -651,7 +857,7 @@
      */
      #toggleButtonDisplay(isShow, buttonOptions, svgOptions, clickFunc, insertPlace) {
         // Process if video page
-        if( !this.#isVideoPage() ) {
+        if( !this.isVideoPage() ) {
             return;
         }
 
@@ -666,7 +872,7 @@
         if( isShow ) {
 
             // SVG画像を生成
-            let svg = this.#generateSvg(ExceedTube.ButtonOptions.SVG, svgOptions);
+            let svg = this.#generateSvg(ExceedTube.SVG.ATTRIBUTES, svgOptions);
 
             // ボタンを生成
             let playerButton = this.#generatePlayerButton({
@@ -681,6 +887,44 @@
             const insertNode  = insertPlace.beforeNode || this.#elements.player_settings_button;
             controlNode.insertBefore(playerButton, insertNode);
         }
+    }
+
+    /**
+     * 再利用可能なSVG画像オブジェクトを事前定義する
+     */
+    #defineReuseSvg() {
+        const target = document.head.querySelector(`.${ExceedTube.Attributes.ID.SVG_DEFS}`);
+        if( target ) {
+            return;
+        }
+
+        const namespaceURI = 'http://www.w3.org/2000/svg';
+        let svg = document.createElementNS(namespaceURI, 'svg');
+        svg.id = ExceedTube.Attributes.ID.SVG_DEFS;
+
+        let defs = document.createElementNS(namespaceURI, 'defs');
+        defs.appendChild(this.#generateSymbol(ExceedTube.SVG.SEEK_BACKWARD));   // 15sec backward
+        defs.appendChild(this.#generateSymbol(ExceedTube.SVG.SEEK_FORWARD));    // 15sec forward
+        defs.appendChild(this.#generateSymbol(ExceedTube.SVG.RELOAD_COMMENT));  // reload comment
+
+        svg.appendChild(defs);
+        document.head.appendChild(svg);
+    }
+
+    /**
+     *
+     * @param {Object} template
+     * @returns
+     */
+    #generateSymbol(template) {
+        const namespaceURI = 'http://www.w3.org/2000/svg';
+        let symbol = document.createElementNS(namespaceURI, 'symbol');
+        let path   = document.createElementNS(namespaceURI, 'path');
+
+        symbol.setAttributeNS(null, template.ATTRIBUTES);
+        path.setAttributeNS(null, template.PATH);
+        symbol.appendChild(path);
+        return symbol;
     }
 
     /**
@@ -707,7 +951,7 @@
      * @returns ボタンElement
      */
     #generatePlayerButton(options) {
-        if( !this.#isVideoPage() ) {
+        if( !this.isVideoPage() ) {
             return;
         }
 
