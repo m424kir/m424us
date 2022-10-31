@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         M424Common
-// @version      1.4
+// @version      1.4.1
 // @description  commonクラス
 // @author       M424
 // ==/UserScript==
@@ -103,9 +103,9 @@ const M424 = {
 
     DOM: {
         /**
-         * 指定要素が取得できるまで待機する(最大待機時間有)
-         * @param {String} selector 取得したい要素を特定するセレクタ
-         * @param {Number} maxWait_msec 最大待機時間(ミリ秒)
+         * 指定セレクタが取得できるまで待機する(最大待機時間有)
+         * @param {String} selector - 取得したい要素を特定するセレクタ
+         * @param {Number} maxWait_msec - 最大待機時間(ミリ秒)
          * @returns {Promise} 取得セレクタ(見つからなかった場合はNull)
          */
         async querySelectorAsync(selectors, baseElement = document, maxWait_msec = 5000) {
@@ -113,16 +113,55 @@ const M424 = {
             if( M424.Object.isNullOrUndefined(baseElement) ) {
                 baseElement = document;
             }
+            return await this.getValueAsync(() => baseElement?.querySelector(selectors) ?? null, 10, maxWait_msec);
+        },
 
-            let node;
-            const waitTime_msec  = 10;
+        /**
+         * 指定プロパティが取得できるまで待機する(最大待機時間有)
+         * @param {HTMLElement|CSSStyleDeclaration} elemOrCss - Element or CSS
+         * @param {String} property - 取得したいスタイルのプロパティ
+         * @param {Number} maxWait_msec - 最大待機時間(ミリ秒)
+         * @returns {Promise} 取得プロパティ(見つからなかった場合はNull)
+         */
+        async getPropertyValueAsync(elemOrCss, property, maxWait_msec = 1000) {
+
+            const style = (() => {
+                if( M424.Object.is('HTMLElement', elemOrCss) ) {
+                    return window.getComputedStyle(element);
+                }
+                else if( M424.Object.is('CSSStyleDeclaration', elemOrCss) ) {
+                    return elemOrCss;
+                }
+                throw new Error('elemOrCssにはHTMLElement または CSSStyleDeclaration を指定してください');
+            })();
+            return await this.getValueAsync(() => style?.getPropertyValue(property), 10, maxWait_msec);
+        },
+
+        /**
+         * [async] 特定の値が取得されるまで待機するベースメソッド
+         * @param {Function} getterFunc - 取得用関数
+         * @param {Number} waitTime_msec - 1回の待機時間(ミリ秒)
+         * @param {Number} maxWait_msec - 最大待機時間(ミリ秒)
+         * @param  {...any} args - 取得用関数の引数
+         * @returns {Promise} 取得したい値 or null
+         */
+        async getValueAsync(getterFunc, waitTime_msec = 10, maxWait_msec = 1000, ...args) {
+
+            if( !waitTime_msec?.between(0, maxWait_msec, false) ) {
+                waitTime_msec = 10;
+            }
+            if( !maxWait_msec?.between(waitTime_msec, 10000, false) ) {
+                maxWait_msec = 1000;
+            }
+
+            let ret;
             const startTime_msec = Date.now();
             while( (Date.now() - startTime_msec) < maxWait_msec ) {
-                node = baseElement?.querySelector(selectors) ?? null;
-                if( node ) break;
+                ret = getterFunc(args);
+                if( ret ) break;
                 await M424.sleep(waitTime_msec);
             }
-            return new Promise( resolve => { resolve( node ); });
+            return new Promise( resolve => { resolve( ret ); });
         },
     },
 
@@ -327,6 +366,19 @@ const M424 = {
      * @namespace Date
      */
     Date: {
+        /**
+         * moment wrapper
+         * @param {*} obj
+         * @returns
+         */
+        of: (obj) => moment(obj),
+        /**
+         * moment.duration wrapper
+         * @param {*} obj
+         * @returns
+         */
+        duration: (obj) => moment.duration(obj),
+
         /**
          * 日付からYYYY/MM/DD形式の文字列に変換する
          * @param {Date} dateObj
