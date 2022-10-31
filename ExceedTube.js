@@ -260,6 +260,8 @@
      * 各種情報
      */
     #info = {
+        width: {},
+        height: {},
         page: {},   // ページ情報
         video: {},  // 動画情報
     };
@@ -419,12 +421,12 @@
      */
     async #updatePageData() {
         const css = window.getComputedStyle(this.#elements.ytd_app);
-        this.#info.page.guide.width      = css.getPropertyValue(ExceedTube.Attributes.Style.GUIDE_WIDTH);
-        this.#info.page.mini_guide.width = css.getPropertyValue(ExceedTube.Attributes.Style.MINI_GUIDE_WIDTH);
-        this.#info.page.masthead.height  = css.getPropertyValue(ExceedTube.Attributes.Style.MASTHEAD_HEIGHT);
+        this.#info.width.guide      = css.getPropertyValue(ExceedTube.Attributes.Style.GUIDE_WIDTH);
+        this.#info.width.mini_guide = css.getPropertyValue(ExceedTube.Attributes.Style.MINI_GUIDE_WIDTH);
+        this.#info.height.masthead  = css.getPropertyValue(ExceedTube.Attributes.Style.MASTHEAD_HEIGHT);
 
-        this.#info.page.scrollbar.width    = window.innerWidth - document.body.clientWidth;
-        this.#info.page.page_manager.width = this.#elements.page_manager.clientWidth;
+        this.#info.width.scrollbar    = window.innerWidth - document.body.clientWidth;
+        this.#info.width.page_manager = this.#elements.page_manager.clientWidth;
 
         // 動画情報を更新
         await this.#updateVideoInfo();
@@ -535,7 +537,7 @@
         })();
 
         // 取得したサイズをサムネイルに適用
-        const thumbnail = this.#info.page.subscriptions.thumbnail;
+        const thumbnail = { width: this.#info.width.thumbnail, height: this.#info.height.thumbnail };
         if( thumbnailWidth != thumbnail.width || thumbnailHeight != thumbnail.height ) {
             this.#elements.browse.style.setProperty(ExceedTube.Attributes.Style.THUMBNAIL_WIDTH,  `${thumbnailWidth}px`,  'important');
             this.#elements.browse.style.setProperty(ExceedTube.Attributes.Style.THUMBNAIL_HEIGHT, `${thumbnailHeight}px`, 'important');
