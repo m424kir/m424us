@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         M424Common
-// @version      1.4.1
+// @version      1.4.2
 // @description  commonクラス
 // @author       M424
 // ==/UserScript==
@@ -101,72 +101,138 @@ class M424Consts {
  */
 const M424 = {
 
+    /**
+     * M424.DOM.querySelectorAsyncのエイリアスメソッド
+     */
+    $: (selectors, element = document, timeout_ms) => M424.DOM.querySelectorAsync(selectors, element, timeout_ms),
+
+    /**
+     * @namespace System
+     */
+    System: {
+        /**
+         * [async] 指定ミリ秒間 処理をスリープする
+         * @param {Number} msec - ミリ秒
+         * @returns {Promise}
+         */
+        sleep: (msec) => new Promise((resolve) => setTimeout(resolve, msec)),
+
+        /**
+         * 通常Throwできない3項演算子等の中でErrorをThrowするためのラッパーメソッド
+         * @param {String} message - エラーメッセージ
+         * @param {Error} type - エラーオブジェクトタイプ
+         * @throws
+         */
+        error: (message, type = Error) => {
+            throw Function(`"use strict"; return new ${type.name}("${message}");`)();
+        },
+
+        /**
+         * 引数が指定されない or undefined が渡された際にエラーを発生させるためのメソッド
+         *  - メソッドのデフォルト引数に設定して使用する ex) function xxx(args = M424.System.mandary()) {...}
+         */
+        mandatory: () => {
+            throw new TypeError(arg + ": Invalid argument parameter.");
+        }
+    },
+
+    /**
+     * 内部処理用メソッド
+     * @namespace _internal
+     */
+    _internal: {
+        /**
+         * [async] 指定時間が経過するまでデータ取得を試みる
+         * @param {Number} interval_ms - 1処理の待機時間(ミリ秒)
+         * @param {Number} timeout_ms - 最大待機時間(ミリ秒)
+         * @param {Function} func - 値を取得したいgetterメソッド
+         * @param {*} args - メソッド引数
+         * @returns
+         */
+        _async: (interval_ms = 10, timeout_ms = 1000) => async (func, ...args) => {
+            const timeout  = Math.min(timeout_ms, 100000);
+            const interval = Math.min(Math.max(0, interval_ms), timeout);
+            const st = Date.now();
+            const elapsed = () => (Date.now() - st);
+            try {
+                let ret;
+                while( true ) {
+                    while( elapsed() > timeout ) throw new Error(`Running query timed out(${timeout}ms)`);
+                    if( ret = func(args) ) return new Promise(resolve => resolve(ret));
+                    await M424.System.sleep(interval);
+                }
+            } catch (e) {
+                throw e;
+            }
+        },
+    },
+
+    /**
+     * @namespace DOM
+     */
     DOM: {
         /**
          * 指定セレクタが取得できるまで待機する(最大待機時間有)
-         * @param {String} selector - 取得したい要素を特定するセレクタ
-         * @param {Number} maxWait_msec - 最大待機時間(ミリ秒)
+         * @param {String} selector - 取得したい要素を特定するセレクタ(省略不可)
+         * @param {Element} baseElement - 親要素(default:document)
+         * @param {Number} timeout_ms - 最大待機時間(ミリ秒)
          * @returns {Promise} 取得セレクタ(見つからなかった場合はNull)
          */
-        async querySelectorAsync(selectors, baseElement = document, maxWait_msec = 5000) {
-
-            if( M424.Object.isNullOrUndefined(baseElement) ) {
+         async querySelectorAsync(selectors = M424.System.mandatory(), baseElement = document, timeout_ms = 5000) {
+            if (M424.Object.isNullOrUndefined(baseElement)) {
                 baseElement = document;
             }
-            return await this.getValueAsync(() => baseElement?.querySelector(selectors) ?? null, 10, maxWait_msec);
+            const getter = M424._internal._async(10, timeout_ms);
+
+            try{
+                return await getter(() => baseElement?.querySelector(selectors) ?? null);
+            } catch (e) {
+                return null;    // query timeout
+            }
+        },
+
+        /**
+         * ElementからCSS情報を取得する
+         * @param {Element} o - Element
+         * @returns {CSSStyleDeclaration} 取得スタイル(not found is undefined)
+         */
+        getCSS(o) {
+            try {
+                if (M424.Object.isElement(o)) M424.System.error('Element型のみ許容します', TypeError);
+                if (!('getComputedStyle' in window)) M424.System.error('getComputedStyleが存在しません', Error);
+                return window.getComputedStyle(o);
+            } catch (e) {
+                throw e;
+            }
         },
 
         /**
          * 指定プロパティが取得できるまで待機する(最大待機時間有)
-         * @param {HTMLElement|CSSStyleDeclaration} elemOrCss - Element or CSS
+         * @param {Element|CSSStyleDeclaration} elemOrCss - Element or CSS
          * @param {String} property - 取得したいスタイルのプロパティ
-         * @param {Number} maxWait_msec - 最大待機時間(ミリ秒)
+         * @param {Number} timeout_ms - 最大待機時間(ミリ秒)
          * @returns {Promise} 取得プロパティ(見つからなかった場合はNull)
          */
-        async getPropertyValueAsync(elemOrCss, property, maxWait_msec = 1000) {
-
-            const style = (() => {
-                if( M424.Object.is('HTMLElement', elemOrCss) ) {
-                    return window.getComputedStyle(element);
-                }
-                else if( M424.Object.is('CSSStyleDeclaration', elemOrCss) ) {
-                    return elemOrCss;
-                }
-                throw new Error('elemOrCssにはHTMLElement または CSSStyleDeclaration を指定してください');
-            })();
-            return await this.getValueAsync(() => style?.getPropertyValue(property), 10, maxWait_msec);
-        },
-
-        /**
-         * [async] 特定の値が取得されるまで待機するベースメソッド
-         * @param {Function} getterFunc - 取得用関数
-         * @param {Number} waitTime_msec - 1回の待機時間(ミリ秒)
-         * @param {Number} maxWait_msec - 最大待機時間(ミリ秒)
-         * @param  {...any} args - 取得用関数の引数
-         * @returns {Promise} 取得したい値 or null
-         */
-        async getValueAsync(getterFunc, waitTime_msec = 10, maxWait_msec = 1000, ...args) {
-
-            if( !waitTime_msec?.between(0, maxWait_msec, false) ) {
-                waitTime_msec = 10;
+        async getPropertyValueAsync(elemOrCss, property, timeout_ms = 1000) {
+            try {
+                const css = M424.Object.is(CSSStyleDeclaration, elemOrCss) ? elemOrCss : this.getCSS(elemOrCss);
+                const getter = M424._internal._async(10, timeout_ms);
+                return await getter(() => css?.getPropertyValue(property) ?? null);
+            } catch (e) {
+                return null;
             }
-            if( !maxWait_msec?.between(waitTime_msec, 10000, false) ) {
-                maxWait_msec = 1000;
-            }
-
-            let ret;
-            const startTime_msec = Date.now();
-            while( (Date.now() - startTime_msec) < maxWait_msec ) {
-                ret = getterFunc(args);
-                if( ret ) break;
-                await M424.sleep(waitTime_msec);
-            }
-            return new Promise( resolve => { resolve( ret ); });
         },
     },
 
+    /**
+     * @namespace Object
+     */
     Object: {
 
+        /**
+         * 型判定用のクラス
+         * @class DataType
+         */
         DataType: class {
             type;
             name;
@@ -220,7 +286,7 @@ const M424 = {
          * @param {*} variable - 型判定したい変数
          * @returns true:引数がUndefined型でない
          */
-         isNotUndefined(variable) {
+        isNotUndefined(variable) {
             return !this.isUndefined(variable);
         },
 
@@ -273,7 +339,7 @@ const M424 = {
          * @returns 引数の型文字列
          */
         getDataType(variable) {
-            return  new this.DataType(variable);
+            return new this.DataType(variable);
         },
 
 
@@ -299,32 +365,56 @@ const M424 = {
          *      - M424.Object.is(String, "str"); // true
          *      - M424.Object.is(true, true); // false
          *      - M424.Object.is("true", true); // false
-         * @param {*} type - 型(Function) or 型文字列
+         * @param {Function|String} type - 型(Function) or 型文字列
          * @param {*} variable - 検証したいデータ
+         * @param {Boolean} strict - 厳格モード. 継承を考慮するか
          * @returns true: 対象データが指定の型である
          */
-        is(type, variable) {
+        is(type, variable, strict = false) {
             try {
                 const targetType = this.getDataType(variable);
                 const checkType = (() => {
                     const dataType = this.getDataType(type);
                     // console.log(dataType);
-                    if( dataType.name === 'Function' ) {
+                    if (dataType.name === 'Function') {
                         return M424.Object.DataType.of(dataType.type, type.name);
                     }
-                    else if( dataType.name === 'String' ) {
-                        if( ["NULL", "UNDEFINED"].includes(type.valueOf().toUpperCase()) ) {
+                    else if (dataType.name === 'String') {
+                        if (["NULL", "UNDEFINED"].includes(type.valueOf().toUpperCase())) {
                             throw TypeError(`引数:typeにnullまたはundefinedが指定されています. 型または型文字列を指定して下さい.: ${type}`);
                         }
                         return M424.Object.DataType.of(M424Consts.DATA_TYPE.OBJECT, type.valueOf());
                     }
                     throw TypeError(`引数:typeには、型または型文字列を指定して下さい.: ${type}`);
                 })();
-                return targetType.name === checkType.name;
-            } catch(e) {
+                const isExtend = !strict && checkType.type === 'object' && variable instanceof eval(checkType.name);
+                return (targetType.name === checkType.name) || (isExtend);
+            } catch (e) {
                 console.log(e);
                 return false;
             }
+        },
+
+        /**
+         * 引数がNode型であるか判定する
+         * @param {Object} o
+         * @returns true: Node型
+         */
+        isNode(o) {
+            return (typeof Node === 'object' ? o instanceof Node
+                : o && typeof o === 'object' && typeof o.nodeType === 'number' && typeof o.nodeName === 'string'
+            );
+        },
+
+        /**
+         * 引数がElement型であるか判定する
+         * @param {Object} o
+         * @returns true: Element型
+         */
+        isElement(o) {
+            return ("HTMLElement" in window)
+                ? (o && o instanceof HTMLElement)
+                : !!(o && typeof o === 'object' && o.nodeType === 1 && o.nodeName);
         },
     },
 
@@ -354,13 +444,6 @@ const M424 = {
             return { array: ret, removeObjects: removeObjs };
         },
     },
-
-    /**
-     * [async] 指定ミリ秒間 処理をスリープする
-     * @param {Number} msec - ミリ秒
-     * @returns {Promise}
-     */
-    sleep: (msec) => new Promise( (resolve) => setTimeout(resolve, msec) ),
 
     /**
      * @namespace Date
@@ -410,14 +493,14 @@ const M424 = {
          * @param {Number} sec - 指定秒数
          * @returns {Number} 時間[h]
          */
-        toHours: (sec) => { return Math.floor( sec / 3600 ); },
+        toHours: (sec) => { return Math.floor(sec / 3600); },
 
         /**
          * 指定秒数を分[min]に変換する
          * @param {Number} sec - 指定秒数
          * @returns {Number} 分[min]
          */
-        toMinutes: (sec) => { return Math.floor( sec / 60 ); },
+        toMinutes: (sec) => { return Math.floor(sec / 60); },
 
         /**
          * 指定秒数をhh:mm:ss形式の文字列に変換する
@@ -471,9 +554,9 @@ const M424 = {
             let arr = [];
             args.forEach( e => {
                 if( Array.isArray(e) ) {
-                    arr.push( ...e );
+                    arr.push(...e);
                 } else {
-                    arr.push( e );
+                    arr.push(e);
                 }
             });
             const ret = Math.max.apply(null, arr);
@@ -487,13 +570,13 @@ const M424 = {
          * @return {Number} 引数内で一番小さなNumber.
          *                  引数が空の場合null. Number以外の場合NaN.
          */
-         min: (...args) => {
+        min: (...args) => {
             let arr = [];
             args.forEach( e => {
                 if( Array.isArray(e) ) {
-                    arr.push( ...e );
+                    arr.push(...e);
                 } else {
-                    arr.push( e );
+                    arr.push(e);
                 }
             });
             const ret = Math.min.apply(null, arr);
