@@ -1046,7 +1046,9 @@
     #showMasthead() {
         if( this.#elements.ytd_app ) {
             this.#elements.ytd_app.removeAttribute('masthead-hidden');
-            this.#elements.ytd_app.style.cssText += '--ytd-masthead-height: 56px;';
+            if( !this.isVideoPage() ) {
+                this.#elements.ytd_app.style.cssText += '--ytd-masthead-height: 56px;';
+            }
             this.#info.page.hidden_masthead = false;
         }
     }
