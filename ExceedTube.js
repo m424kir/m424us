@@ -421,19 +421,19 @@
      * [async] ページ情報を更新する
      */
     async #updatePageData() {
-        const css = window.getComputedStyle(this.#elements.ytd_app);
-        this.#info.width.guide      = parseInt(await M424.DOM.getPropertyValueAsync(css, ExceedTube.Attributes.Style.GUIDE_WIDTH));
-        this.#info.width.mini_guide = parseInt(await M424.DOM.getPropertyValueAsync(css, ExceedTube.Attributes.Style.MINI_GUIDE_WIDTH));
+        // const css = window.getComputedStyle(this.#elements.ytd_app);
+        // this.#info.width.guide      = parseInt(await M424.DOM.getPropertyValueAsync(css, ExceedTube.Attributes.Style.GUIDE_WIDTH));
+        // this.#info.width.mini_guide = parseInt(await M424.DOM.getPropertyValueAsync(css, ExceedTube.Attributes.Style.MINI_GUIDE_WIDTH));
 
-        this.#info.width.scrollbar    = window.innerWidth - document.body.clientWidth;
-        this.#info.width.page_manager = this.#elements.page_manager.clientWidth;
-        this.#info.height.masthead    = this.#elements.masthead.clientHeight;
+        // this.#info.width.scrollbar    = window.innerWidth - document.body.clientWidth;
+        // this.#info.width.page_manager = this.#elements.page_manager.clientWidth;
+        // this.#info.height.masthead    = this.#elements.masthead.clientHeight;
 
         // 動画情報を更新
         await this.#updateVideoInfo();
         // 登録チャンネルのページ情報を更新
         await this.#updateSubscriptionsInfo();
-        this.debug(this.#info);
+        // this.debug(this.#info);
 
     }
 
@@ -452,21 +452,21 @@
             throw new Error('動画情報を取得できませんでした.');
         }
         const videoInfo = JSON.parse(videoInfoNode.textContent);
-        this.#info.video.title          = videoInfo.name;                           // 動画 - タイトル
-        this.#info.video.description    = videoInfo.description;                    // 動画 - 説明
-        this.#info.video.author         = videoInfo.author;                         // チャンネル名
-        this.#info.video.url            = videoInfo.embedUrl;                       // 動画 - URL
-        this.#info.video.thumbnailUrl   = videoInfo.thumbnailUrl[0];                // 動画 - サムネイルURL
+        // this.#info.video.title          = videoInfo.name;                           // 動画 - タイトル
+        // this.#info.video.description    = videoInfo.description;                    // 動画 - 説明
+        // this.#info.video.author         = videoInfo.author;                         // チャンネル名
+        // this.#info.video.url            = videoInfo.embedUrl;                       // 動画 - URL
+        // this.#info.video.thumbnailUrl   = videoInfo.thumbnailUrl[0];                // 動画 - サムネイルURL
         this.#info.video.duration       = M424.Date.duration(videoInfo.duration);   // 動画 - 時間 (配信中は"PT0S")
-        this.#info.video.genre          = videoInfo.genre;                          // 動画 - ジャンル
+        // this.#info.video.genre          = videoInfo.genre;                          // 動画 - ジャンル
         this.#info.video.status         = ExceedTube.Status.STREAMING.VIDEO;        // 配信状況(動画、アーカイブ、配信中)
 
         if( videoInfo.publication ) {
             this.#info.video.status      = ExceedTube.Status.STREAMING.LIVE;
-            this.#info.video.startDate   = M424.Date.of(videoInfo.publication[0].startDate);
+            // this.#info.video.startDate   = M424.Date.of(videoInfo.publication[0].startDate);
             if( videoInfo.duration !== 'PT0S') {
                 this.#info.video.status  = ExceedTube.Status.STREAMING.ARCHIVE;
-                this.#info.video.endDate = M424.Date.of(videoInfo.publication[0].endDate);
+                // this.#info.video.endDate = M424.Date.of(videoInfo.publication[0].endDate);
             }
         }
     }
@@ -477,22 +477,22 @@
     async #updatePageElements() {
 
         this.#elements.ytd_app      = await M424.DOM.querySelectorAsync(ExceedTube.Selector.YTD_APP);
-        this.#elements.masthead     = await M424.DOM.querySelectorAsync(ExceedTube.Selector.MASTHEAD);
-        this.#elements.guide        = await M424.DOM.querySelectorAsync(ExceedTube.Selector.GUIDE);
-        this.#elements.mini_guide   = await M424.DOM.querySelectorAsync(ExceedTube.Selector.MINI_GUIDE);
-        this.#elements.miniplayer   = await M424.DOM.querySelectorAsync(ExceedTube.Selector.MINIPLAYER);
-        this.#elements.page_manager = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PAGE_MANAGER);
+        // this.#elements.masthead     = await M424.DOM.querySelectorAsync(ExceedTube.Selector.MASTHEAD);
+        // this.#elements.guide        = await M424.DOM.querySelectorAsync(ExceedTube.Selector.GUIDE);
+        // this.#elements.mini_guide   = await M424.DOM.querySelectorAsync(ExceedTube.Selector.MINI_GUIDE);
+        // this.#elements.miniplayer   = await M424.DOM.querySelectorAsync(ExceedTube.Selector.MINIPLAYER);
+        // this.#elements.page_manager = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PAGE_MANAGER);
         this.#elements.browse       = await M424.DOM.querySelectorAsync(ExceedTube.Selector.BROWSE);
 
         // 動画ページに関するElement情報を更新
         if( this.isVideoPage() ) {
-            this.#elements.primary                = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PRIMARY);
-            this.#elements.secondary              = await M424.DOM.querySelectorAsync(ExceedTube.Selector.SECONDARY);
+            // this.#elements.primary                = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PRIMARY);
+            // this.#elements.secondary              = await M424.DOM.querySelectorAsync(ExceedTube.Selector.SECONDARY);
 
             // 動画プレイヤー
             this.#elements.player                 = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PLAYER);
             this.#elements.video                  = await M424.DOM.querySelectorAsync(ExceedTube.Selector.VIDEO);
-            this.#elements.player_left_controls   = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PLAYER_LEFT_CONTROLS);
+            // this.#elements.player_left_controls   = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PLAYER_LEFT_CONTROLS);
             this.#elements.player_right_controls  = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PLAYER_RIGHT_CONTROLS);
             this.#elements.player_settings_button = await M424.DOM.querySelectorAsync(ExceedTube.Selector.PLAYER_SETTINGS_BUTTON);
 
