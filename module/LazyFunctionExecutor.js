@@ -84,7 +84,7 @@ M424.LazyFunction = class LazyFunction extends M424.Base {
         this.#runCount = 0;
         this.#name = name;
         this.#isRepeat = options.isRepeat || false;
-        this.#maxRunCount = this.#isRepeat ? (options.maxRunCount || M424.LazyFunctionExecutor.MAX_RUN_COUNT) : 1;
+        this.#maxRunCount = options.isDelete ? 1 : (options.maxRunCount || M424.LazyFunctionExecutor.MAX_RUN_COUNT);
         this.#delay_ms = options.delay_ms || 1000;
         this.#func = this.#createFunction(func, options, ...funcArgs);
         this.#timerId = this.#createTimer();
@@ -128,8 +128,12 @@ M424.LazyFunction = class LazyFunction extends M424.Base {
      *   @param {M424.LazyFunctionExecutor} executor - 遅延実行する関数の管理者
      * @param  {...any} [args] - 関数の引数
      * @returns {Function} 渡された関数をラップしたもの
+     * @throws {TypeError} funcが関数でない場合に例外が発生します
      */
     #createFunction(func, options, ...args) {
+        if( !M424.Type.isFunction(func) ) {
+            throw new TypeError('引数[func]が関数である必要があります。');
+        }
         return () => {
             func(...args);
             this.#runCount++;
@@ -137,8 +141,9 @@ M424.LazyFunction = class LazyFunction extends M424.Base {
                 this.#timerId = undefined;
             }
             // 不要物は管理者側からも削除する
+            // this.debug(options);
             if( options.isDelete || this.#runCount >= this.#maxRunCount ) {
-                executor.remove(this.#name);
+                options.executor.remove(this.#name);
                 this.debug(`${options.isDelete ? '削除フラグにより' : '規定回数到達により'}関数を削除しました。`, this.#name);
             }
         };
@@ -189,6 +194,18 @@ M424.LazyFunction = class LazyFunction extends M424.Base {
      */
     isReady() {
         return M424.Util.isTimeoutId(this.#timerId);
+    }
+
+    /**
+     * 関数の遅延実行を再実行する
+     * @returns {boolean} true: 関数を再実行した
+     */
+    reuse() {
+        if( !this.isReady() ) {
+            this.#timerId = this.#createTimer();
+            return true;
+        }
+        return false;
     }
 };
 
@@ -252,8 +269,8 @@ M424.LazyFunctionExecutor = class LazyFunctionExecutor extends M424.Base {
         }
         const funcName = lazyFunc.name;
         if( this.#lazyFunctions.find( f => f.name === funcName ) ) {
+            this.warn(`登録名 "${funcName}" は既に登録済みの名称です。既存の定義を削除し、新たに登録し直します。`);
             this.remove(funcName);
-            this.warn(`${funcName}は既に登録済みの名称です。既存の定義を削除し、新たに登録し直します。`);
         }
         this.#lazyFunctions.push(lazyFunc);
         return funcName;
@@ -271,7 +288,6 @@ M424.LazyFunctionExecutor = class LazyFunctionExecutor extends M424.Base {
      * @returns {string} 関数の登録名
      */
     add(func, delay_ms, options = {}, ...funcArgs) {
-
         const funcOption = (() => {
             const FUNC_OPS = M424.LazyFunctionExecutor.AFTER_EXECUTION;
             let ret = {};
@@ -280,7 +296,7 @@ M424.LazyFunctionExecutor = class LazyFunctionExecutor extends M424.Base {
             ret.isDebugMode = this.isDebugMode || false;
             ret.isDelete = [undefined, FUNC_OPS.DELETE].includes(options.afterExecution);
             ret.isRepeat = options.afterExecution === FUNC_OPS.REPEAT;
-            ret.maxRunCount = ret.isRepeat ? (options.maxRunCount || M424.LazyFunctionExecutor.MAX_RUN_COUNT) : 1;
+            ret.maxRunCount = ret.isDelete ? 1 : (options.maxRunCount || M424.LazyFunctionExecutor.MAX_RUN_COUNT);
             ret.executor = this;
             return ret;
         })();
@@ -323,6 +339,16 @@ M424.LazyFunctionExecutor = class LazyFunctionExecutor extends M424.Base {
     isReady(name) {
         const target = this.#lazyFunctions.find( f => f.name === name );
         return target ? target.isReady() : false;
+    }
+
+    /**
+     * 登録済みの関数を再実行する
+     * @param {String} name - 登録名
+     * @returns true: 登録済み関数 かつ 関数を再実行した
+     */
+    reuse(name) {
+        const target = this.#lazyFunctions.find( f => f.name === name );
+        return target ? target.reuse() : false;
     }
 
     /**
