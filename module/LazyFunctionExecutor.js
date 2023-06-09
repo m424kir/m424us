@@ -1,10 +1,9 @@
 // ==UserScript==
-// @name         LazyFunctionExecutor
+// @name         LazyFunction and LazyFunctionExecutor
 // @namespace    M424
 // @version      1.0
 // @description  関数の遅延実行を管理するクラス
 // @author       M424
-// @grant        none
 // ==/UserScript==
 
 /**
