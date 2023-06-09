@@ -1,1 +1,0 @@
-import {say} from 'https://raw.githubusercontent.com/m424kir/m424us/master/say.js';
