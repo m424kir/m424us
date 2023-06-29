@@ -30,6 +30,11 @@ HideMasthead = class HideMasthead extends M424.Base {
     static Events = {
         // イベントリスナー
         YT_PAGE_DATA_UPDATED: 'yt-page-data-updated',
+        MOUSE_MOVE: 'mousemove',
+        MOUSE_ENTER: 'mouseenter',
+        MOUSE_LEAVE: 'mouseleave',
+        FOCUS: 'focus',
+        BLUR: 'blur',
 
         // [LazyFunction] マストヘッドの表示を切り替えるイベント名
         SHOW_MASTHEAD:    'showMasthead',
@@ -93,15 +98,40 @@ HideMasthead = class HideMasthead extends M424.Base {
      * @constructor
      */
     constructor() {
+        this.#initialize();
+    }
+
+    async #initialize() {
+        const { MOUSE_MOVE, MOUSE_ENTER, MOUSE_LEAVE, FOCUS, BLUR } = HideMasthead.Events;
+        // 本クラスで使用するマウスイベント
+        Object.defineProperty(this, 'MouseEvents', {
+            value: [MOUSE_MOVE, MOUSE_ENTER, MOUSE_LEAVE, FOCUS, BLUR],
+            writable: false,
+        });
+
         this.#events = new M424.LazyFunctionExecutor('LazyFunctionExecutor', true);
         this.#mouse = new M424.Mouse(document.documentElement);
 
+        const searchBoxElem = await M424.DOM.waitForSelector('input#search', 5000);
+        this.MouseEvents.forEach( evt => {
+            switch(evt) {
+                case MOUSE_ENTER: case MOUSE_LEAVE:
+                    break;
+                case MOUSE_MOVE:
+                    this.#mouse.setCallback( evt, () => this.#registEvent(evt) );
+                    break;
+                case FOCUS: case BLUR:
+                    searchBoxElem.addEventListener( evt, () => this.#registEvent(evt) );
+                    break;
+            }
+        });
+
         // ページ更新時、マストヘッドを隠す
         document.addEventListener(HideMasthead.Events.YT_PAGE_DATA_UPDATED, async () => {
-
             this.#ytdAppElement = await M424.DOM.waitForSelector(HideMasthead.SELECTOR_YTD_APP, 10 * 1000);
             this.#registEvent(); // Hide Masthead
         });
+
     }
 
     /**
@@ -122,6 +152,9 @@ HideMasthead = class HideMasthead extends M424.Base {
      * @private
      */
     #registEvent(eventType) {
+        // yt-page-data-updated完了後より登録を許可する
+        if( !this.#ytdAppElement ) { return; }
+
         const { SHOW_MASTHEAD, HIDE_MASTHEAD } = HideMasthead.Events;
         const isShow = this.#canShowMasthead(eventType);
         const addEventName = isShow ? SHOW_MASTHEAD : HIDE_MASTHEAD;
@@ -180,7 +213,6 @@ HideMasthead = class HideMasthead extends M424.Base {
      * @private
      */
     #isMouseEvent(evt) {
-        const mouseEvents = ['mousemove', 'mouseenter', 'mouseleave', 'focus', 'blur'];
-        return mouseEvents.includes(evt);
+        return this.MouseEvents.includes(evt);
     }
 };
