@@ -1,16 +1,144 @@
+// ==UserScript==
+// @name         M424
+// @namespace    M424
+// @version      1.0.0
+// @description  独自定義の機能を提供する名前空間
+// @author       M424
+// ==/UserScript==
 'use strict';
 
 /**
- * 独自定義の関数群を定義する名前空間
+ * 独自定義の機能を提供する名前空間
  * @namespace
  */
 const M424 = {};
+
+/**
+ * 基底クラス
+ * @class
+ */
+M424.Base = class Base {
+
+    /**
+     * ログレベル
+     * @static
+     */
+    static LOG_LEVEL = {
+        INFO:  'info',
+        DEBUG: 'debug',
+        WARN:  'warn',
+        ERROR: 'error',
+    };
+
+    /**
+     * デバッグ出力を行うかのフラグ
+     * @type {Boolean}
+     * @private
+     */
+    #isDebug;
+
+    /**
+     * クラス識別子
+     *  - ログ出力時に該当クラスを一意に識別するための文字列
+     * @type {string}
+     * @private
+     */
+    #classIdentifier;
+
+    /**
+     * @constructor
+     * @param {string} classIdentifier - クラス識別子
+     * @param {Boolean} [isDebugMode=false] - デバックログを出力するか
+     */
+    constructor(classIdentifier, isDebugMode = false) {
+        this.#classIdentifier = classIdentifier;
+        this.#isDebug = isDebugMode;
+    }
+
+    /**
+     * クラス識別子を出力します
+     * @returns {string} クラス識別子
+     */
+    get classIdentifier() { return this.#classIdentifier; }
+
+    /**
+     * デバッグモードかどうかを取得します
+     * @returns {boolean} デバッグモードかどうか
+     */
+    get isDebugMode() { return this.#isDebug; }
+
+    /**
+     * infoログ出力
+     * @param  {...any} msg - 出力メッセージ
+     */
+    log(...msg) {
+        this.#outputLog(M424.Base.LOG_LEVEL.INFO, ...msg);
+    }
+
+    /**
+     * debugログ出力
+     *  - デバッグ出力ON(#isDebug===true)の場合のみ出力を行う
+     * @param  {...any} msg - 出力メッセージ
+     */
+    debug(...msg) {
+        if( this.#isDebug ) { this.#outputLog(M424.Base.LOG_LEVEL.DEBUG, ...msg); }
+    }
+
+    /**
+     * warnログ出力
+     * @param  {...any} msg - 出力メッセージ
+     */
+    warn(...msg) {
+        this.#outputLog(M424.Base.LOG_LEVEL.WARN, ...msg);
+    }
+
+    /**
+     * errorログ出力
+     * @param  {...any} msg - 出力メッセージ
+     */
+    error(...msg) {
+        this.#outputLog(M424.Base.LOG_LEVEL.ERROR, ...msg);
+    }
+
+    /**
+     * ログ出力
+     *  - 出力メッセージが複数の場合はスペースで区切られます
+     * @param {string} logType - ログタイプ
+     * @param  {...any} msg - 出力メッセージ
+     * @private
+     */
+    #outputLog(logType, ...msg) {
+        const logPrefix = `[${this.#classIdentifier}]`;
+
+        if( logType === M424.Base.LOG_LEVEL.INFO ) {
+            console.log(logPrefix, ...msg);
+        }
+        else if( logType === M424.Base.LOG_LEVEL.DEBUG ) {
+            // Chromeだとconsole.debugが出力されないためlogを使用
+            console.log(logPrefix, ...msg);
+        }
+        else if( logType === M424.Base.LOG_LEVEL.WARN ) {
+            console.warn(logPrefix, ...msg);
+        }
+        else if( logType === M424.Base.LOG_LEVEL.ERROR ) {
+            console.error(logPrefix, ...msg);
+        }
+        // 必要に応じて、他のログレベルに対応した処理を追加する
+    }
+};
 
 /**
  * 定数を提供する名前空間
  * @namespace
  */
 M424.Consts = {
+
+    /**
+     * namespace URI
+     */
+    NAMESPACE_URI: {
+        SVG: 'http://www.w3.org/2000/svg',
+    },
 
     /**
      * データ型
@@ -50,16 +178,18 @@ M424.Consts = {
 M424.System = {
 
     /**
-     * [async] 指定時間（ミリ秒）だけ処理を一時停止する関数（精度はsetTimeoutに依存）
+     * 指定時間（ミリ秒）だけ処理を一時停止する関数（精度はsetTimeoutに依存）
      * @param {number} ms - 一時停止する時間（ミリ秒）
      * @returns {Promise<void>} - 一時停止が終了した後に解決されるPromise
+     * @async
      */
     sleep: (ms) => new Promise(resolve => setTimeout(resolve, ms)),
 
     /**
-     * [async] 指定時間（ミリ秒）だけ処理を一時停止する関数（高精度）
+     * 指定時間（ミリ秒）だけ処理を一時停止する関数（高精度）
      * @param {number} ms - 一時停止する時間（ミリ秒）
      * @returns {Promise<void>} - 一時停止が終了した後に解決されるPromise
+     * @async
      */
     accurateSleep: (ms) => {
         return new Promise(resolve => {
@@ -70,18 +200,18 @@ M424.System = {
             requestAnimationFrame(delay);
         });
     },
-    
+
     /**
      * 通常Throwできない箇所でエラーを発生させるラッパー関数(3項演算子等)
      * @param {string} message - エラーメッセージ
-     * @param {Error} type - エラーオブジェクトタイプ (extends Error)
+     * @param {Error} [type=Error] - エラーオブジェクトタイプ (extends Error)
      * @throws {TypeError} 引数 "type" が有効なエラーオブジェクトでない場合にスローされます
      * @example
      *  // 3項演算子の条件を満たさない場合にエラーを発生させる
      *  is(xxx) ? yyy : throwError('エラー');               // Error: エラー
      *  is(xxx) ? yyy : throwError('エラー', SyntaxError);  // SyntaxError: エラー
      *  is(xxx) ? yyy : throwError('エラー', Number);       // TypeError: 無効なエラーオブジェクトの型です。Errorクラスまたはそのサブクラスを指定してください。
-     *  
+     *
      */
     throwError: (message, type = Error) => {
         if( !(type === Error || type.prototype instanceof Error) ) {
@@ -102,427 +232,212 @@ M424.System = {
      *  greet(undefined);   // TypeError: 引数が指定されていない、または無効な値が渡されました。
      *  greet("太郎");      // 処理が正常に実行される(こんにちは、太郎さん)
      *  greet(null);        // 処理が正常に実行される(こんにちは、nullさん)
-     */ 
+     */
     mandatory: () => {
         throw new TypeError("引数が指定されていない、または無効な値が渡されました。");
     },
 };
 
-
 /**
- * テストに関する機能を提供する名前空間
+ * 日付[yyyy/mm/dd]/時刻[hh:mm:ss]に関する機能を提供する名前空間
  * @namespace
  */
-M424.Test = {
+M424.DateTime = {
+    /**
+     * 以下のライブラリを使用しています
+     *  - Day.js
+     *    - https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.7/dayjs.min.js
+     */
 
     /**
-     * 呼び出し元のコード行情報を取得する関数
-     * @returns {string} 呼び出し元のコード行情報。取得できない場合は空文字列を返す。
+     * 日付からDay.jsオブジェクトを生成します
+     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
+     * @returns {Dayjs} Day.jsオブジェクト
      */
-    getCallerInfo: () => {
-        const error = new Error();
-        const stackTrace = error.stack.split(/[\r\n]+/);
-        // 呼び出し元はスタックトレースの3番目の行に存在する
-        const callerLine = stackTrace[3];
-
-        // 呼び出し元の情報を解析する
-        const condition = /^\s*at\s*(?:new\s+)?(?<method>[$_a-z][$\w]*)?\s+\(?(?<url>(?<path>[\s\S]+):(?<line>\d+):(?<pos>\d+))\)?/;
-        const match = callerLine.match(condition);
-        if (match?.groups) {
-            return match.groups;
-        }
-        return '';
-    },
+    of: (date) => dayjs(date),
 
     /**
-     * テストケースを実行する関数。テスト結果はコンソールに表示されます。
-     * @param {string} description - テストケースの説明
-     * @param {function} func - 実行するテストケースの関数
-     * @throws {Error} 引数`func`が関数ではない場合に例外が発生します
+     * 日付から"YYYY/MM/DD HH:mm:ss"形式の文字列を生成します。
+     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
+     * @returns {string} "YYYY/MM/DD HH:mm:ss"形式の文字列
      */
-    runTestCase: (description, func) => {
-        if (typeof func !== 'function') {
-            throw new Error(`渡された引数[func]は関数ではありません`);
-        }
-        try {
-            func();
-            console.log(`${description} - PASSED.`);
-        } catch(error) {
-            error.message = `${description} - ${error.message}`;
-            console.error(error);
-        }
-    },
+    toString: (date) => M424.DateTime.of(date).format('YYYY/MM/DD HH:mm:ss'),
 
     /**
-     * 条件を検証し、条件が偽の場合にエラーを発生させる関数
-     * @param {boolean} condition - 検証する条件
-     * @param {string} [message] - エラーメッセージ (省略可能)
-     * @throws {Error} 条件が偽の場合にエラーをスローします
+     * 日付から"YYYY/MM/DD"形式の文字列を生成します。
+     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
+     * @returns {string} "YYYY/MM/DD"形式の文字列
      */
-    assert: (condition, message) => {
-        if( !condition ) {
-            const callerInfo = M424.Test.getCallerInfo();
-            const fileName = callerInfo.url.split('/').pop();
-            const errorMsg = `Assertion failed: ${message || ''} (${fileName})`;
-            const error = new Error(errorMsg);
-            error.fileName = callerInfo.path;
-            error.lineNumber = callerInfo.line;
-            error.columnNumber = callerInfo.pos;
-            throw error;
-        }
-    },
-};
-
-
-/**
- * データの型に関する機能を提供する名前空間
- * @namespace
- */
-M424.Type = {
+    toYMD: (date) => M424.DateTime.of(date).format('YYYY/MM/DD'),
 
     /**
-     * データ型を表すためのクラス
-     * @class DataType
+     * 日付から"HH:mm:ss"形式の文字列を生成します。
+     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
+     * @returns {string} "HH:mm:ss"形式の文字列
      */
-    DataType: class DataType {
-
-        /**
-         * DataType クラスのコンストラクタ
-         */
-        constructor() {};
-
-        /**
-         * [private] 初期処理
-         * @param {*} variable - 型を判定したい変数
-         */
-        #initialize(variable) {
-            // 型タイプ(object or primitive)
-            this.#setType( M424.Type.isObject(variable) );
-            // 型の名称
-            this.name = M424.Type.getClassName(variable);
-        };
-
-        /**
-         * [private] データ型のタイプ(オブジェクト型orプリミティブ型)を設定する
-         * @param {Boolean} isObject - オブジェクト型か
-         */
-        #setType(isObject) {
-            this.type = isObject ? M424.Consts.DATA_TYPE.OBJECT : M424.Consts.DATA_TYPE.PRIMITIVE;
-        };
-        
-        /**
-         * DataType インスタンスを生成します。
-         * @param {*} variable - 任意の型の変数
-         * @returns {DataType} DataType インスタンス
-         * @throws {Error} 引数の数や型が不正な場合にスローされます
-         */
-        static of(variable) {
-            const instance = new M424.Type.DataType();
-            instance.#initialize(variable);
-            return instance;
-        };
-
-        /**
-         * 引数の情報に従い、DataType インスタンスを生成する
-         * @param {String} sTypeName - データ型の名称("Date", "String")
-         * @param {Boolean} isObject - オブジェクト型かどうかを示す真偽値
-         * @returns {DataType} DataType インスタンス
-         * @throws {TypeError} 引数の型が不正な場合にスローされます
-         */
-        static withArgs(sTypeName, isObject) {
-            if( M424.Type.getClassName(sTypeName) !== 'String' ) {
-                throw new TypeError(`引数:sTypeNameは文字列である必要があります。`);
-            }
-            else if( M424.Type.getClassName(isObject) !== 'Boolean' ) {
-                throw new TypeError(`引数:isObjectは真偽値である必要があります。`);
-            }
-            const instance = new M424.Type.DataType();
-            instance.#setType(isObject);
-            instance.name = sTypeName;
-            return instance;
-        };
-    },
+    toHMS: (date) => M424.DateTime.of(date).format('HH:mm:ss'),
 
     /**
-     * 引数がNull型か判定する
-     * @param {*} variable - 型判定したい変数
-     * @returns true:引数がNull型
+     * 日付から曜日文字列を生成します。
+     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
+     * @returns {string} 曜日文字列（例: "日", "水"）
      */
-    isNull: (variable) => {
-        return variable === null;
-    },
+    toDayOfWeek: (date) => M424.DateTime.of(date).locale('ja').format('dd'),
 
     /**
-     * 引数がNull型でないか判定する
-     * @param {*} variable - 型判定したい変数
-     * @returns true:引数がNull型でない
+     * 日付から1970年1月1日からの経過秒数を返します
+     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
+     * @returns {number} 日付の秒数表現
      */
-    isNotNull: (variable) => {
-        return !M424.Type.isNull(variable);
-    },
+    toSeconds: (date) => M424.DateTime.of(date).unix(),
 
     /**
-     * 引数がUndefined型か判定する
-     * @param {*} variable - 型判定したい変数
-     * @returns true:引数がUndefined型
+     * 日付から1970年1月1日からの経過秒数(ミリ秒)を返します
+     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
+     * @returns {number} 日付の秒数表現(ミリ秒)
      */
-    isUndefined: (variable) => {
-        return typeof variable === M424.Consts.PRIMITIVE_TYPE.UNDEFINED;
-    },
+    toMilliSeconds: (date) => M424.DateTime.of(date).valueOf(),
 
-    /**
-     * 引数がUndefined型でないか判定する
-     * @param {*} variable - 型判定したい変数
-     * @returns true:引数がUndefined型でない
-     */
-    isNotUndefined: (variable) => {
-        return !M424.Type.isUndefined(variable);
-    },
-
-    /**
-     * 引数がUndefined型orNull型であるか判定する
-     * @param {*} variable - 型判定したい変数
-     * @returns true:引数がUndefined型orNull型
-     */
-    isNullOrUndefined: (variable) => {
-        return M424.Type.isNull(variable) || M424.Type.isUndefined(variable);
-    },
-
-    /**
-     * 引数がUndefined型およびNull型でないか判定する
-     * @param {*} variable - 型判定したい変数
-     * @returns true:引数がUndefined型およびNull型でない
-     */
-    isNotNullAndNotUndefined: (variable) => {
-        return M424.Type.isNotNull(variable) && M424.Type.isNotUndefined(variable);
-    },
-
-    /**
-     * 引数がプリミティブ型か判定する
-     *  - プリミティブ型
-     *      - 文字列: string
-     *      - 数値: number, bigint
-     *      - 真偽値: boolean
-     *      - シンボル型: symbol
-     *      - undefined: undefined
-     *      - null: null
-     *         nullは厳密にはプリミティブ型であることを留意ください。
-     *         typeof nullの結果にobjectが返されるのは、JavaScript初期の仕様であり、
-     *         仕様上のバグとも言えます。
-     * @param {*} variable - 型判定したい変数
-     * @returns true:引数がプリミティブ型
-     */
-    isPrimitive: (variable) => {
-        const type = (typeof variable).toUpperCase();
-        return M424.Consts.PRIMITIVE_TYPE.hasOwnProperty(type) || M424.Type.isNull(variable);
-    },
-
-    /**
-     * 引数がオブジェクト型か判定する(Not Primitive)
-     * @param {*} variable - 型判定したい変数
-     * @returns true:引数がオブジェクト型
-     */
-    isObject: (variable) => {
-        return !M424.Type.isPrimitive(variable);
-    },
-
-    /**
-     * 引数オブジェクトのクラス名を返す.
-     *  - プリミティブ値やリテラルも可(オートボクシングされる)
-     * @param {Object} obj - 取得したいクラスオブジェクト
-     * @returns 引数のクラス名
-     */
-    getClassName: (obj) => {
-        const cls = Object.prototype.toString.call(obj).slice(8, -1);
-        return cls === "Object" ? obj.constructor.name : cls;
-    },
-
-
-    /**
-     * 指定の型かどうかを判定する
-     *  - typeにはデータ型オブジェクト(Function)または型文字列(String)のみ許容する
-     *  - typeにNullまたはUndefinedを指定できない(エラーが発生)
-     *  - ex)
-     *      - M424.Type.is(Date, new Date()); // true
-     *      - M424.Type.is("Date", new Date()); // true
-     *      - M424.Type.is(String, "str"); // true
-     *      - M424.Type.is(true, true); // false
-     *      - M424.Type.is("true", true); // false
-     * @param {Function|String} type - 型(Function) or 型文字列
-     * @param {*} variable - 検証したいデータ
-     * @param {Boolean} strict - 厳格モード. 継承を考慮するか
-     * @returns true: 対象データが指定の型である
-     */
-    is: (type, variable, strict = false) => {
-        try {
-            // 型検証を行うデータ
-            const targetType = M424.Type.DataType.of(variable);
-            // 期待される型
-            const expectedType = (() => {
-                // typeが型文字列の場合
-                if( M424.Type.getClassName(type) === 'String' ) {
-                    if( ['null', 'undefined'].includes(type.toLowerCase()) ) {
-                        throw TypeError(`引数:typeにnullまたはundefinedが指定されています. 型または型文字列を指定して下さい.: ${type}`);
-                    }
-                    return M424.Type.DataType.withArgs(type.toString(), true);
-                }
-                // typeがデータ型の場合
-                else if( M424.Type.getClassName(type) === 'Function' ) {
-                    return M424.Type.DataType.withArgs(type.name, true);
-                }
-                throw TypeError(`引数:typeには、型または型文字列を指定して下さい.: ${type}`);
-            })();
-
-            // 型継承を考慮するかの判定
-            const isExtend = !strict 
-                && expectedType.type === M424.Consts.DATA_TYPE.OBJECT
-                && variable instanceof eval(expectedType.name)
-            ;
-            // 期待される型と同じ名前 or 継承しているか(not 厳格モード)
-            return targetType.name === expectedType.name || isExtend;
-        } catch (e) {
-            console.error(e);
-            return false;
-        }
-    },
-
-    /**
-     * 引数がNode型であるか判定する
-     * @param {Object} o - 判定したいオブジェクト
-     * @returns true: Node型
-     */
-    isNode: (o) => {
-        if( M424.Type.isPrimitive(o) ) {
-            return false;
-        }
-        else if( M424.Type.isUndefined(window.Node) ) {
-            return !!(o && typeof o.nodeType === 'number' && typeof o.nodeName === 'string');
-        }
-        return !!(o && o instanceof window.Node);
-    },
-
-    /**
-     * 引数がElement型であるか判定する
-     * @param {Object} o - 判定したいオブジェクト
-     * @returns true: Element型
-     */
-    isElement: (o) => {
-        if( M424.Type.isPrimitive(o) ) {
-            return false;
-        }
-        else if( M424.Type.isUndefined(window.Element) ) {
-            return M424.Type.isNotUndefined(window.Node)
-                && !!(o && o.nodeType === Node.ELEMENT_NODE && o.nodeName)
-            ;
-        }
-        return !!(o && o instanceof Element);
-    },
 };
 
 /**
- * DOMに関する機能を提供する名前空間
+ * 配列に関する機能を提供する名前空間
  * @namespace
  */
-M424.DOM = {
+M424.Array = {
 
     /**
-     * [async] 引数で渡されたデータ取得関数からデータが取得されるまで待機する関数
-     * @param {Function} getterFunc - データ取得関数
-     * @param {number} [timeout=2000] - タイムアウトまでの待機時間（ミリ秒）
-     * @returns {Promise} データが取得された場合に解決されるPromise
-     * @throws {TypeError} getterFuncが関数でない場合に例外をスローします
-     * @throws {TypeError} timeoutが数値でない場合に例外をスローします
+     * 配列から特定の要素を削除した配列を返す
+     * @param {Array} array - 削除したい要素を含む配列
+     * @param {Function} callbackFn - 配列の要素を削除する条件が書かれたコールバック関数
+     *   @param {any} element - 配列の要素
+     *   @returns {Boolean} true: 要素が取り除かれる。false: 要素は残される
+     * @param {Boolean} [isFirstOnly=false] - 最初に条件を満たした要素のみを削除するかどうか
+     * @returns {Object} 削除後の配列と削除された要素の情報を含むオブジェクト
+     *   - array: 削除後の配列
+     *   - removedElements: 削除された要素の配列
+     * @throws {TypeError} array パラメータが配列でない場合にエラーをスローします
      */
-    waitForData: (getterFunc, timeout = 2000) => {
-        if( typeof getterFunc !== 'function' ) {
-            throw new TypeError('引数[getterFunc]は関数[function]である必要があります。');
+    remove: (array, callbackFn, isFirstOnly = false) => {
+        if( !Array.isArray(array) ) {
+            throw new TypeError('引数[array]は配列である必要があります');
         }
-        if( typeof timeout !== 'number' ) {
-            throw new TypeError('引数[timeout]は数値[number]である必要があります。');
-        }
-    
-        return new Promise( (resolve, reject) => {
-    
-            let overallTimeoutTimer;
-            let observer;
-    
-            /**
-             * 実行結果を処理する内部メソッド
-             * @param {any} result - 実行結果となる要素
-             * @param {string} [error] - エラーメッセージ（オプション）
-             */
-            const onDone = (result, error) => {
-                clearTimeout(overallTimeoutTimer);
-                observer?.disconnect();
-                error ? reject(error) : resolve(result);
-            };
-    
-            /**
-             * データの取得を実行する内部メソッド
-             */
-            const onExecute = () => {
-                const result = getterFunc();
-                if( M424.Type.isNotNullAndNotUndefined(result) ) {
-                    onDone(result);
+        const removedElements = [];
+        let isFirstRemoved = false;
+
+        const newArray = array.filter( element => {
+            if( callbackFn(element) ) {
+                if( !isFirstOnly || !isFirstRemoved ) {
+                    removedElements.push(element);
+                    isFirstRemoved = true;
+                    return false;
                 }
-            };
-    
-            // 既に存在する場合は結果を返して終了
-            onExecute();
-    
-            // タイムアウトの設定
-            overallTimeoutTimer = setTimeout( () => {
-                onDone(null, `Timeout Error: データの取得に失敗しました.`);
-            }, timeout);
-    
-            // 対象データが取得できるまで、DOMの変更を監視する
-            observer = new MutationObserver( () => {
-                onExecute();
-            });
-            observer.observe(document.documentElement, {childList: true, subtree: true});
+            }
+            return true;
         });
-    },
-
-    /**
-     * [async] 指定されたセレクタが取得できるまで待機する関数
-     * @param {string} selector - 取得するセレクタ
-     * @param {number} [timeout=2000] - タイムアウトまでの待機時間（ミリ秒）
-     * @returns {Promise} セレクタが取得された場合に解決されるPromise
-     * @throws {TypeError} selectorが文字列でない場合に例外をスローします
-     * @throws {TypeError} timeoutが数値でない場合に例外をスローします
-     */
-    waitForSelector: (selector, timeout = 2000) => {
-        return M424.DOM.waitForData( () => document.querySelector(selector), timeout);
-    },
-
-    /**
-     * 指定されたElementからCSS情報を取得する関数
-     * @param {Element} element - CSS情報を取得するElement
-     * @returns {CSSStyleDeclaration} CSS情報のオブジェクト (CSSStyleDeclaration)
-     * @throws {TypeError} 引数がElement型でない場合に例外をスローします
-     * @throws {Error} windowオブジェクトがgetComputedStyle関数を持っていない場合に例外をスローします
-     */
-    getCSS: (element) => {
-        if( !M424.Type.isElement(element) ) {
-            throw new TypeError('引数はElement型である必要があります。');
-        }
-        else if (typeof window.getComputedStyle !== 'function') {
-            throw new Error('windowオブジェクトにgetComputedStyle関数が存在しません。');
-        }
-        return window.getComputedStyle(element);
-    },
-
-    /**
-     * [async] 指定されたセレクタの要素が取得できるまで待機し、取得後にCSS情報を返す関数
-     * @param {string} selector - CSSセレクタ
-     * @param {number} [timeout=2000] - タイムアウト時間（ミリ秒）（省略可能）
-     * @returns {Promise<CSSStyleDeclaration>} CSS情報のオブジェクト (CSSStyleDeclaration)
-     * @throws {TypeError} 引数が正しい型でない場合に例外をスローします
-     * @throws {Error} 要素の取得に失敗した場合に例外をスローします
-     */
-    waitForCSS: async (selector, timeout = 2000) => {
-        const elem = await M424.DOM.waitForSelector(selector, timeout);
-        return M424.DOM.getCSS(elem);
+        return { array: newArray, removedElements };
     },
 };
 
+/**
+ * 汎用ユーティリティを提供する名前空間
+ * @namespace
+ */
+M424.Util = {
+
+    /**
+     * 渡された値がタイムアウトの識別子（タイマーID）かどうかを判別します。
+     * @param {Number} value - 判別する値
+     * @returns {boolean} タイムアウトの識別子かどうかを表す真偽値
+     */
+    isTimeoutId: (value) => typeof value === 'number' && value > 0,
+
+    /**
+     * [1-9a-z]のランダムな文字列を生成する(10文字)
+     * @returns {string} ランダム生成した文字列(10文字)
+     */
+    randomString: () => Math.random().toString(36).substring(2, 12),
+
+    /**
+     * 引数が正の整数かどうかを判定する
+     * @param {Number} number - 判定したい整数
+     * @returns {boolean} - 引数が正の整数(0は含まない)の場合はtrue、それ以外の場合はfalse
+     * @throws {TypeError} 引数が数値でない場合に例外をスローします
+     */
+    isPositiveInt: (number) => {
+        if( !M424.Type.isNumber(number) ) {
+            throw TypeError('引数は数値である必要があります');
+        }
+        return Number.isSafeInteger(number) && Math.sign(number) === 1;
+    },
+
+    /**
+     * 引数が負の整数かどうかを判定する
+     * @param {Number} number - 判定したい整数
+     * @returns {boolean} - 引数が負の整数(0は含まない)の場合はtrue、それ以外の場合はfalse
+     * @throws {TypeError} 引数が数値でない場合に例外をスローします
+     */
+    isNegativeInt: (number) => {
+        if( !M424.Type.isNumber(number) ) {
+            throw TypeError('引数は数値である必要があります');
+        }
+        return Number.isSafeInteger(number) && Math.sign(number) === -1;
+    },
+
+    /**
+     * Array対応版 Math.max
+     *  - 引数内に数値が含まれていれば、数値以外が含まれていても処理が実行される
+     * @param  {...(Number|Number[])} args - NumberまたはNumber配列
+     * @returns {Number} 引数内で一番大きなNumber. 引数が空の場合はnull. Number以外の場合はNaN.
+     */
+    max: (...args) => {
+        // 階層化している引数をフラットにする
+        const flattenedArgs = args.flat();
+        if( flattenedArgs.length === 0 ) {
+            return null; // 引数が空の場合
+        }
+        // 数値のみにフィルタリングする
+        const validNumbers = flattenedArgs.filter( arg => M424.Type.isNumber(arg) );
+        if( validNumbers.length === 0 ) {
+            return NaN; // 数値が存在しない場合
+        }
+        return Math.max(...validNumbers);
+    },
+
+    /**
+     * Array対応版 Math.min
+     *  - 引数内に数値が含まれていれば、数値以外が含まれていても処理が実行される
+     * @param  {...(Number|Number[])} args - NumberまたはNumber配列
+     * @returns {Number} 引数内で一番小さなNumber. 引数が空の場合はnull. Number以外の場合はNaN.
+     */
+    min: (...args) => {
+        // 階層化している引数をフラットにする
+        const flattenedArgs = args.flat();
+        if( flattenedArgs.length === 0 ) {
+            return null; // 引数が空の場合
+        }
+        // 数値のみにフィルタリングする
+        const validNumbers = flattenedArgs.filter( arg => M424.Type.isNumber(arg) );
+        if( validNumbers.length === 0 ) {
+            return NaN; // 数値が存在しない場合
+        }
+        return Math.min(...validNumbers);
+    },
+
+    /**
+     * 指定された数値が範囲内にあるかどうかを判定する
+     * @param {Number} num - 判定したい数値
+     * @param {Number} start - 範囲の開始値
+     * @param {Number} end - 範囲の終了値
+     * @param {Boolean} [inclusive=false] - 範囲に開始値と終了値を含むかどうか (省略可能)
+     * @returns {Boolean} 数値が範囲内に含まれる場合はtrue、そうでない場合はfalse
+     */
+    isInRange: (num, start, end, inclusive = false) => {
+        const min = M424.Util.min(start, end);
+        const max = M424.Util.max(start, end);
+        return inclusive
+            ? min <= num && num <= max
+            : min < num && num < max
+        ;
+    },
+};

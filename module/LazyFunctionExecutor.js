@@ -289,13 +289,13 @@ M424.LazyFunctionExecutor = class LazyFunctionExecutor extends M424.Base {
      */
     add(func, delay_ms, options = {}, ...funcArgs) {
         const funcOption = (() => {
-            const FUNC_OPS = M424.LazyFunctionExecutor.AFTER_EXECUTION;
+            const { DELETE, REPEAT } = M424.LazyFunctionExecutor.AFTER_EXECUTION;
             let ret = {};
             ret.name = options.name || M424.Util.randomString();
             ret.delay_ms = delay_ms || 1000;
             ret.isDebugMode = this.isDebugMode || false;
-            ret.isDelete = [undefined, FUNC_OPS.DELETE].includes(options.afterExecution);
-            ret.isRepeat = options.afterExecution === FUNC_OPS.REPEAT;
+            ret.isDelete = [undefined, DELETE].includes(options.afterExecution);
+            ret.isRepeat = options.afterExecution === REPEAT;
             ret.maxRunCount = ret.isDelete ? 1 : (options.maxRunCount || M424.LazyFunctionExecutor.MAX_RUN_COUNT);
             ret.executor = this;
             return ret;
