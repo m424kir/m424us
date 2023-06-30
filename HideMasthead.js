@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HideMasthead
 // @namespace    M424
-// @version      0.1.0
+// @version      0.1.1
 // @description  Youtube動画ページでマストヘッドを隠す
 // @author       M424
 // @require      M424.js
@@ -117,7 +117,7 @@ class HideMasthead extends M424.Base {
             writable: false,
         });
 
-        this.#events = new M424.LazyFunctionExecutor('LazyFunctionExecutor', true);
+        this.#events = new M424.LazyFunctionExecutor('LazyFunctionExecutor');
         this.#mouse = new M424.Mouse(document.documentElement);
         this.#isHidden = false; // 初期状態は表示状態
 
@@ -190,7 +190,7 @@ class HideMasthead extends M424.Base {
             return;
         }
         // イベントを登録する
-        this.#events.add(this.#switchMasthead(isShow).bind(this), HideMasthead.Settings.TOGGLE_DELAY_MS, { name: addEventName });
+        this.#events.add(this.#switchMasthead.bind(this, isShow), HideMasthead.Settings.TOGGLE_DELAY_MS, { name: addEventName });
     }
 
     /**
