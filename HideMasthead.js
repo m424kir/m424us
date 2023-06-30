@@ -1,18 +1,17 @@
 // ==UserScript==
 // @name         HideMasthead
 // @namespace    M424
-// @version      0.0.1
-// @description  動画ページでマストヘッドを隠す
+// @version      0.1.0
+// @description  Youtube動画ページでマストヘッドを隠す
 // @author       M424
+// @require      M424.js
+// @require      M424.Type.js
+// @require      M424.Mouse.js
+// @require      M424.DOM.js
+// @require      LazyFunctionExecutor.js
 // ==/UserScript==
 
-// このスクリプトを使用する場合は、TamperMonkeyScriptに以下の定義を追加してください。
-// @require      https://raw.githubusercontent.com/m424kir/m424us/master/module/M424.js
-// @require      https://raw.githubusercontent.com/m424kir/m424us/master/module/M424.Mouse.js
-// @require      https://raw.githubusercontent.com/m424kir/m424us/master/module/M424.DOM.js
-// @require      https://raw.githubusercontent.com/m424kir/m424us/master/module/LazyFunctionExecutor.js
-
-HideMasthead = class HideMasthead extends M424.Base {
+class HideMasthead extends M424.Base {
 
     /**
      * マストヘッドの表示/非表示に関する設定
@@ -42,10 +41,13 @@ HideMasthead = class HideMasthead extends M424.Base {
     };
 
     /**
-     * CSSセレクター: 'ytd-app'
-     * @constant {string}
+     * セレクタ
+     * @constant {Object}
      */
-    static SELECTOR_YTD_APP = 'ytd-app';
+    static Selectors = {
+        YTD_APP: 'ytd-app',
+        SEARCH_BOX: 'input#search',
+    };
 
     /**
      * CSSプロパティ: '--ytd-masthead-height'
@@ -96,12 +98,18 @@ HideMasthead = class HideMasthead extends M424.Base {
     /**
      * コンストラクタ
      * @constructor
+     * @param {Boolean} [isDebugMode=false] - デバックログを出力するか
      */
-    constructor() {
+    constructor(isDebugMode=false) {
+        super('HideMasthead', isDebugMode);
         this.#initialize();
     }
 
-    async #initialize() {
+    /**
+     * 初期化処理
+     * @private
+     */
+    #initialize() {
         const { MOUSE_MOVE, MOUSE_ENTER, MOUSE_LEAVE, FOCUS, BLUR } = HideMasthead.Events;
         // 本クラスで使用するマウスイベント
         Object.defineProperty(this, 'MouseEvents', {
@@ -111,25 +119,32 @@ HideMasthead = class HideMasthead extends M424.Base {
 
         this.#events = new M424.LazyFunctionExecutor('LazyFunctionExecutor', true);
         this.#mouse = new M424.Mouse(document.documentElement);
+        this.#isHidden = false; // 初期状態は表示状態
 
-        const searchBoxElem = await M424.DOM.waitForSelector('input#search', 5000);
-        this.MouseEvents.forEach( evt => {
-            switch(evt) {
-                case MOUSE_ENTER: case MOUSE_LEAVE:
-                    break;
-                case MOUSE_MOVE:
-                    this.#mouse.setCallback( evt, () => this.#registEvent(evt) );
-                    break;
-                case FOCUS: case BLUR:
-                    searchBoxElem.addEventListener( evt, () => this.#registEvent(evt) );
-                    break;
-            }
-        });
-
-        // ページ更新時、マストヘッドを隠す
+        // 動画ページ更新完了時の処理を定義
         document.addEventListener(HideMasthead.Events.YT_PAGE_DATA_UPDATED, async () => {
-            this.#ytdAppElement = await M424.DOM.waitForSelector(HideMasthead.SELECTOR_YTD_APP, 10 * 1000);
-            this.#registEvent(); // Hide Masthead
+            try {
+                this.#ytdAppElement = await M424.DOM.waitForSelector(HideMasthead.Selectors.YTD_APP);
+                const searchBoxElem = await M424.DOM.waitForSelector(HideMasthead.Selectors.SEARCH_BOX);
+
+                // マウス位置、検索ボックスのフォーカスでマストヘッドの表示を切替える
+                this.MouseEvents.forEach( evt => {
+                    switch(evt) {
+                        case MOUSE_ENTER: case MOUSE_LEAVE:
+                            break;
+                        case MOUSE_MOVE:
+                            this.#mouse.setCallback( evt, () => this.#registEvent(evt) );
+                            break;
+                        case FOCUS: case BLUR:
+                            searchBoxElem.addEventListener( evt, () => this.#registEvent(evt) );
+                            break;
+                    }
+                });
+                // マストヘッドの初期状態を｢非表示｣にする
+                this.#registEvent();
+            } catch(e) {
+                this.error(e);
+            }
         });
 
     }
@@ -140,9 +155,12 @@ HideMasthead = class HideMasthead extends M424.Base {
      * @private
      */
     #switchMasthead(isShow) {
-        const mastheadHeight = `${isShow ? HideMasthead.MASTHEAD_HEIGHT : 0}px`;
+        if( isShow !== this.#isHidden ) {
+            this.error("マストヘッドの表示切り替えに不備が生じました.");
+            return;
+        }
         this.#ytdAppElement.toggleAttribute(HideMasthead.ATTRIBUTE_MASTHEAD_HIDDEN);
-        this.#ytdAppElement.style.setProperty(HideMasthead.CSS_YTD_MASTHEAD_HEIGHT, mastheadHeight);
+        this.#ytdAppElement.style.setProperty(HideMasthead.CSS_YTD_MASTHEAD_HEIGHT, '0px');
         this.#isHidden = !isShow;
     }
 
@@ -157,6 +175,9 @@ HideMasthead = class HideMasthead extends M424.Base {
 
         const { SHOW_MASTHEAD, HIDE_MASTHEAD } = HideMasthead.Events;
         const isShow = this.#canShowMasthead(eventType);
+        // 表示中に表示、非表示中に非表示処理は行わない
+        if( isShow !== this.#isHidden ) return;
+
         const addEventName = isShow ? SHOW_MASTHEAD : HIDE_MASTHEAD;
         const removeEventName = isShow ? HIDE_MASTHEAD : SHOW_MASTHEAD;
 
@@ -169,7 +190,7 @@ HideMasthead = class HideMasthead extends M424.Base {
             return;
         }
         // イベントを登録する
-        this.#events.add(this.#switchMasthead.bind(this), HideMasthead.Settings.TOGGLE_DELAY_MS, { name: addEventName });
+        this.#events.add(this.#switchMasthead(isShow).bind(this), HideMasthead.Settings.TOGGLE_DELAY_MS, { name: addEventName });
     }
 
     /**
