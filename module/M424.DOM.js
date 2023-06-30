@@ -1,9 +1,11 @@
 // ==UserScript==
 // @name         M424.DOM
 // @namespace    M424.DOM
-// @version      1.0.0
+// @version      1.0.1
 // @description  DOMに関する機能を提供する名前空間
 // @author       M424
+// @require      M424.js
+// @require      M424.Type.js
 // ==/UserScript==
 'use strict';
 
@@ -70,16 +72,19 @@ M424.DOM = {
 
             /**
              * データの取得を実行する内部メソッド
+             * @returns {boolean} true: データが取得できた
              */
             const onExecute = () => {
                 const result = getterFunc();
                 if( M424.Type.isNotNullAndNotUndefined(result) ) {
                     onDone(result);
+                    return true;
                 }
+                return false;
             };
 
             // 既に存在する場合は結果を返して終了
-            onExecute();
+            if( onExecute() ) return;
 
             // タイムアウトの設定
             overallTimeoutTimer = setTimeout( () => {
@@ -87,9 +92,7 @@ M424.DOM = {
             }, timeout);
 
             // 対象データが取得できるまで、DOMの変更を監視する
-            observer = new MutationObserver( () => {
-                onExecute();
-            });
+            observer = new MutationObserver( onExecute );
             observer.observe(document.documentElement, {childList: true, subtree: true});
         });
     },

@@ -1,15 +1,12 @@
 // ==UserScript==
 // @name         LazyFunction and LazyFunctionExecutor
 // @namespace    M424
-// @version      1.0
+// @version      1.0.1
 // @description  関数の遅延実行を管理するクラス
 // @author       M424
+// @require      M424.js
+// @require      M424.Type.js
 // ==/UserScript==
-
-/**
- * 読込元のスクリプトに以下の定義を追加してください。
- */
-// @require      https://raw.githubusercontent.com/m424kir/m424us/master/module/M424.js
 
 /**
  * 遅延実行する関数を保持するクラス

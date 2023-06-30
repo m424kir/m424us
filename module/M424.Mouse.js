@@ -1,9 +1,11 @@
 // ==UserScript==
 // @name         M424.Mouse
 // @namespace    M424.Mouse
-// @version      1.0.0
+// @version      1.0.1
 // @description  マウスに関する機能を提供するクラス
 // @author       M424
+// @require      M424.js
+// @require      M424.Type.js
 // ==/UserScript==
 'use strict';
 
@@ -55,8 +57,10 @@ M424.Mouse = class Mouse extends M424.Base {
      * コンストラクタ
      * @constructor
      * @param {Element} element - マウスイベントを監視する要素
+     * @param {Boolean} [isDebugMode=false] - デバックログを出力するか
      */
-    constructor(element) {
+    constructor(element, isDebugMode=false) {
+        super('Mouse', isDebugMode);
         this.#element = element;
         this.#position = { x: -1, y: -1 };
         this.#isMouseWithin = false;
@@ -72,9 +76,10 @@ M424.Mouse = class Mouse extends M424.Base {
      * @private
      */
     #initialize() {
-        this.#element.addEventListener( M424.Mouse.EVENT_NAMES.MOUSE_ENTER, ev => this.#handleMouseEvent(ev) );
-        this.#element.addEventListener( M424.Mouse.EVENT_NAMES.MOUSE_LEAVE, ev => this.#handleMouseEvent(ev) );
-        this.#element.addEventListener( M424.Mouse.EVENT_NAMES.MOUSE_MOVE,  ev => this.#handleMouseEvent(ev) );
+        const { MOUSE_ENTER, MOUSE_LEAVE, MOUSE_MOVE } = M424.Mouse.EVENT_NAMES;
+        this.#element.addEventListener( MOUSE_ENTER, ev => this.#handleMouseEvent(ev) );
+        this.#element.addEventListener( MOUSE_LEAVE, ev => this.#handleMouseEvent(ev) );
+        this.#element.addEventListener( MOUSE_MOVE,  ev => this.#handleMouseEvent(ev) );
     }
 
     /**
@@ -139,7 +144,7 @@ M424.Mouse = class Mouse extends M424.Base {
      */
     setCallback(eventName, callback) {
         if( M424.Type.isFunction(callback) ) {
-            if( eventName in M424.Mouse.EVENT_NAMES ) {
+            if( Object.values(M424.Mouse.EVENT_NAMES).includes(eventName) ) {
                 this.#callbacks[eventName] = callback;
             } else {
                 throw new Error(`Invalid event name: ${eventName}`);
@@ -150,17 +155,14 @@ M424.Mouse = class Mouse extends M424.Base {
     }
 
     /**
-     * マウスイベントに関するコールバック関数を実行する
+     * マウスイベントに関するユーザ定義のコールバック関数を実行する
      * @param {string} eventName - イベント名
      * @param {MouseEvent} event - マウスイベントオブジェクト
-     * @throws {Error} eventNameのコールバック関数が未定義の場合に例外が発生します
      * @private
      */
     #executeCallback(eventName, event) {
         if( eventName in this.#callbacks && M424.Type.isFunction(this.#callbacks[eventName]) ) {
             this.#callbacks[eventName](event);
-        } else {
-            throw new Error(`Callback function not found for event: ${eventName}`);
         }
     }
 
