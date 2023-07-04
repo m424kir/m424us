@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424
 // @namespace    M424
-// @version      1.0.0
+// @version      1.1.0
 // @description  独自定義の機能を提供する名前空間
 // @author       M424
 // ==/UserScript==
@@ -134,7 +134,20 @@ M424.Base = class Base {
 M424.Consts = {
 
     /**
+     * イベントリスナー
+     * @constant {Object}
+     */
+    EVENT: {
+        MOUSE_MOVE:     'mousemove',
+        MOUSE_ENTER:    'mouseenter',
+        MOUSE_LEAVE:    'mouseleave',
+        FOCUS:          'focus',
+        BLUR:           'blur',
+    },
+
+    /**
      * namespace URI
+     * @constant {Object}
      */
     NAMESPACE_URI: {
         SVG: 'http://www.w3.org/2000/svg',
@@ -142,6 +155,7 @@ M424.Consts = {
 
     /**
      * データ型
+     * @constant {Object}
      */
     DATA_TYPE: {
         PRIMITIVE:  'primitive',  // プリミティブ型
@@ -150,6 +164,7 @@ M424.Consts = {
 
     /**
      * プリミティブ型
+     * @constant {Object}
      */
     PRIMITIVE_TYPE: {
         NULL:       'null',
@@ -163,6 +178,7 @@ M424.Consts = {
 
     /**
      * オブジェクト型
+     * @constant {Object}
      */
     OBJECT_TYPE: {
         OBJECT:     'object',
@@ -246,55 +262,179 @@ M424.DateTime = {
     /**
      * 以下のライブラリを使用しています
      *  - Day.js
-     *    - https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.7/dayjs.min.js
+     *      - https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js
+     *      - https://cdn.jsdelivr.net/npm/dayjs@1/locale/ja.js
+     *      - https://cdn.jsdelivr.net/npm/dayjs@1/plugin/duration.js
+     *      - https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.js
      */
+
+    /**
+     * 日付や時刻のフォーマット定数
+     * @constant {Object}
+     */
+    FORMATS: {
+        DATE_TIME:              'YYYY/MM/DD HH:mm:ss',
+        DATE_TIME_WITH_DAY:     'YYYY/MM/DD(ddd) HH:mm:ss',
+        DATE_TIME_JP:           'YYYY年MM月DD日 HH時mm分ss秒',
+        DATE_TIME_WITH_DAY_JP:  'YYYY年MM月DD日(ddd) HH時mm分ss秒',
+        DATE:                   'YYYY/MM/DD',
+        DATE_WITH_DAY:          'YYYY/MM/DD(ddd)',
+        DATE_JP:                'YYYY年MM月DD日',
+        DATE_WITH_DAY_JP:       'YYYY年MM月DD日(ddd)',
+        TIME:                   'HH:mm:ss',
+        TIME_JP:                'HH時mm分ss秒',
+        TIME_12H_AMPM:          'hh:mm:ss(A)',
+        TIME_12H_AMPM_JP:       'hh時mm分ss秒(A)',
+    },
+
+    /**
+     * Day.jsで使用するプラグイン一覧 - この定義以外は許可しない
+     * @constant {Object}
+     */
+    PLUGINS: {
+        DURATION:            dayjs_plugin_duration,
+        CUSTOM_PARSE_FORMAT: dayjs_plugin_customParseFormat,
+    },
+
+    /**
+     * Day.jsプラグインが読み込まれていないならロードします
+     * @param {M424.DateTime.PLUGINS} plugin - Day.jsプラグイン
+     */
+    ensurePluginLoaded: (plugin) => {
+        const validPlugins = Object.values(M424.DateTime.PLUGINS);
+        if( validPlugins.includes(plugin) && !plugin.$i ) {
+            dayjs.extend(plugin);
+        }
+    },
+
+    /**
+     * ロケール情報を取得/設定する。
+     * @param {string|undefined} [locale] 設定するロケール.
+     * @returns {string} Day.jsに設定されているロケール情報
+     * @description 引数の有無で処理が異なる
+     *  - 引数有: ロケールを設定し、設定したロケール情報を返す。
+     *  - 引数無: 現在のロケール情報を返す。
+     */
+    locale: (locale) => dayjs.locale(locale),
 
     /**
      * 日付からDay.jsオブジェクトを生成します
-     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
+     * @param {string|number|Date|Dayjs} date - 日付文字列|ミリ秒|(Date|Day.js)オブジェクト
+     * @param {string|undefined} [format] - フォーマット文字列
      * @returns {Dayjs} Day.jsオブジェクト
      */
-    of: (date) => dayjs(date),
+    of: (date, format) => {
+        const { locale, ensurePluginLoaded, PLUGINS, isValidFormat } = M424.DateTime;
+
+        // ロケール及びプラグインのロード
+        if( locale() !== 'ja' ) { locale('ja'); }
+        ensurePluginLoaded(PLUGINS.CUSTOM_PARSE_FORMAT);
+
+        const className = M424.Type.getClassName(date);
+        if( className === 'String' && format && isValidFormat(format, false) ) {
+            return dayjs(date, format);
+        }
+        return dayjs(date);
+    },
 
     /**
-     * 日付から"YYYY/MM/DD HH:mm:ss"形式の文字列を生成します。
-     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
+     * 指定された時間と単位に基づいて、Durationオブジェクトを生成します。
+     * @param {number|Object|string} duration - 単位に基づく数値|単位指定のオブジェクト|ISO 8601 duration文字列
+     * @param {string} [unit] - 時間の単位(省略時はミリ秒)
+     * @returns {dayjs.duration} Durationオブジェクト
+     * @description 時間の単位[unit]は以下の値を指定できます。
+     *  - 年: 'y', 'years'
+     *  - 月: 'M', 'months'
+     *  - 日: 'd', 'days'
+     *  - 週: 'w', 'weeks'
+     *  - 時: 'h', 'hours'
+     *  - 分: 'm', 'minutes'
+     *  - 秒: 's', 'seconds'
+     *  - ミリ秒: 'ms', 'milliseconds'
+     *
+     *  @example オブジェクト指定の例:
+     *   M424.DateTime.duration({
+     *      seconds: 2,
+     *      minutes: 2,
+     *      months: 3,
+     *      years: 1
+     *   });
+     */
+    duration: (duration, unit) => {
+        M424.DateTime.ensurePluginLoaded(M424.DateTime.PLUGINS.DURATION);
+
+        const className = M424.Type.getClassName(duration);
+        if( className === 'Number' && unit ) {
+            const validPattern = /^(y(ears)?|M|m(illiseconds|inutes|onths|s)?|d(ays)?|w(eeks)?|h(ours)?|s(econds)?)$/;
+            return validPattern.test(unit) ? dayjs.duration(duration, unit) : null;
+        }
+        return dayjs.duration(duration);
+    },
+
+    /**
+     * 日付のフォーマット文字列が有効かどうかを判定します。
+     * @param {string} format - フォーマット文字列
+     * @param {boolean} [isOutput=true] - 出力用の日付フォーマット形式かどうか
+     * @returns {boolean} true: フォーマット文字列が有効
+     * @description
+     *  - 入力フォーマット(isOutput = false): M424.DateTime.ofで使用
+     *  - 出力フォーマット(isOutput = true): M424.DateTime.formatで使用
+     */
+    isValidFormat: (format, isOutput=true) => {
+        const validPattern = new RegExp(`[YMDHhmsSZ${isOutput ? 'dAa' : 'Xx'}]`, 'g');
+        const invalidPattern = new RegExp(
+            '(?<!Y)(Y|Y{3})(?!Y)|Y{5,}|M{5,}|D{3,}|H{3,}|h{3,}|m{3,}|s{3,}|Z{3,}|S{4,}|'
+             + (isOutput ? '(?<!S)S{1,2}(?!S)|d{5,}|A{2,}|a{2,}' : 'X{2,}|x{2,}'), 'g'
+        );
+        return validPattern.test(format) && !invalidPattern.test(format);
+    },
+
+    /**
+     * 日付を指定したフォーマットで文字列として返します。
+     * @param {string|number|Date|Dayjs} date - 日付文字列|ミリ秒|(Date|Day.js)オブジェクト
+     * @param {string|undefined} [format] - フォーマット文字列
+     * @returns {string} フォーマットされた日付文字列
+     */
+    format: (date, format) => {
+        const datetime = M424.DateTime.of(date);
+        if( format && M424.DateTime.isValidFormat(format, true) ) {
+            return datetime.format(format);
+        }
+        return datetime.format(); // default format(ISO8601)
+    },
+
+    /**
+     * 日付を"YYYY/MM/DD HH:mm:ss"形式の文字列に変換します。
+     * @param {string|number|Date|Dayjs} date - 日付文字列|ミリ秒|(Date|Day.js)オブジェクト
      * @returns {string} "YYYY/MM/DD HH:mm:ss"形式の文字列
      */
-    toString: (date) => M424.DateTime.of(date).format('YYYY/MM/DD HH:mm:ss'),
+    toDateTime: (date) => M424.DateTime.format(date, M424.DateTime.FORMATS.DATE_TIME),
 
     /**
-     * 日付から"YYYY/MM/DD"形式の文字列を生成します。
-     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
+     * 日付を"YYYY/MM/DD"形式の文字列に変換します。
+     * @param {string|number|Date|Dayjs} date - 日付文字列|ミリ秒|(Date|Day.js)オブジェクト
      * @returns {string} "YYYY/MM/DD"形式の文字列
      */
-    toYMD: (date) => M424.DateTime.of(date).format('YYYY/MM/DD'),
+    toDate: (date) => M424.DateTime.format(date, M424.DateTime.FORMATS.DATE),
 
     /**
-     * 日付から"HH:mm:ss"形式の文字列を生成します。
-     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
+     * 日付を"HH:mm:ss"形式の文字列に変換します。
+     * @param {string|number|Date|Dayjs} date - 日付文字列|ミリ秒|(Date|Day.js)オブジェクト
      * @returns {string} "HH:mm:ss"形式の文字列
      */
-    toHMS: (date) => M424.DateTime.of(date).format('HH:mm:ss'),
+    toTime: (date) => M424.DateTime.format(date, M424.DateTime.FORMATS.TIME),
 
     /**
-     * 日付から曜日文字列を生成します。
-     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
-     * @returns {string} 曜日文字列（例: "日", "水"）
-     */
-    toDayOfWeek: (date) => M424.DateTime.of(date).locale('ja').format('dd'),
-
-    /**
-     * 日付から1970年1月1日からの経過秒数を返します
-     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
-     * @returns {number} 日付の秒数表現
+     * 日付をUnixエポック(1970/01/01 00:00:00 UTC)からの経過秒数に変換します
+     * @param {string|number|Date|Dayjs} date - 日付文字列|ミリ秒|(Date|Day.js)オブジェクト
+     * @returns {number} Unixエポックからの経過秒数
      */
     toSeconds: (date) => M424.DateTime.of(date).unix(),
 
     /**
-     * 日付から1970年1月1日からの経過秒数(ミリ秒)を返します
-     * @param {string|Date} date - 日付を表す文字列またはDateオブジェクト
-     * @returns {number} 日付の秒数表現(ミリ秒)
+     * 日付をUnixエポック(1970/01/01 00:00:00 UTC)からの経過ミリ秒数に変換します。
+     * @param {string|number|Date|Dayjs} date - 日付文字列|ミリ秒|(Date|Day.js)オブジェクト
+     * @returns {number} Unixエポックからの経過ミリ秒数
      */
     toMilliSeconds: (date) => M424.DateTime.of(date).valueOf(),
 
@@ -346,6 +486,22 @@ M424.Array = {
 M424.Util = {
 
     /**
+     * 現在のURLのクエリパラメータをデコードしてオブジェクトとして取得する。
+     * @returns {Object} デコードされたクエリパラメータのオブジェクト。
+     * @description URLSearchParamsを使用してパラメータを取得しますが、このメソッドではキーのデコードを行いません。
+     * 通常の使用ではデコードは必要ありませんが、キーのデコードが必要な場合は別途処理を追加する必要があります。
+     */
+    getURLParams: () => Object.fromEntries(new URLSearchParams(location.search)),
+
+    /* キーのデコードも行う場合の処理
+        () => {
+            const params = Array.from(new URLSearchParams(location.search).entries());
+            const decodedParams = params.map( ([key,value]) => [decodeURIComponent(key), value] );
+            return Object.fromEntries(decodedParams);
+        },
+    */
+
+    /**
      * 渡された値がタイムアウトの識別子（タイマーID）かどうかを判別します。
      * @param {Number} value - 判別する値
      * @returns {boolean} タイムアウトの識別子かどうかを表す真偽値
@@ -366,7 +522,7 @@ M424.Util = {
      */
     isPositiveInt: (number) => {
         if( !M424.Type.isNumber(number) ) {
-            throw TypeError('引数は数値である必要があります');
+            throw new TypeError('引数は数値である必要があります');
         }
         return Number.isSafeInteger(number) && Math.sign(number) === 1;
     },
@@ -379,7 +535,7 @@ M424.Util = {
      */
     isNegativeInt: (number) => {
         if( !M424.Type.isNumber(number) ) {
-            throw TypeError('引数は数値である必要があります');
+            throw new TypeError('引数は数値である必要があります');
         }
         return Number.isSafeInteger(number) && Math.sign(number) === -1;
     },
