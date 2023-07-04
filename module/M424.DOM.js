@@ -157,7 +157,7 @@ M424.DOM = {
      * @param {Object} pathAttributes - PATHタグの属性設定(連想配列)
      * @returns {SVGElement} 生成されたSVG画像Element
      */
-    createSvg(svgAttributes, pathAttributes) {
+    createSvg: (svgAttributes, pathAttributes) => {
         const svg  = document.createElementNS(M424.Consts.NAMESPACE_URI.SVG, 'svg');
         const path = document.createElementNS(M424.Consts.NAMESPACE_URI.SVG, 'path');
 
@@ -166,5 +166,15 @@ M424.DOM = {
         svg.appendChild(path);
 
         return svg;
+    },
+
+    /**
+     * テキスト入力欄にフォーカスしているかを判定する
+     * @param {Event} evt - イベントオブジェクト
+     * @returns true: テキスト入力欄にフォーカスしている
+     */
+    isFocusTextInputField: (evt) => {
+        const textFields = ['EMBED', 'INPUT', 'OBJECT', 'TEXTAREA', 'IFRAME'];
+        return ( textFields.includes(document.activeElement.tagName) || evt.target.isContentEditable );
     },
 };
