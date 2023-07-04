@@ -366,7 +366,7 @@ M424.DateTime = {
         const className = M424.Type.getClassName(duration);
         if( className === 'Number' && unit ) {
             const validPattern = /^(y(ears)?|M|m(illiseconds|inutes|onths|s)?|d(ays)?|w(eeks)?|h(ours)?|s(econds)?)$/;
-            return validPattern.test(unit) ? dayjs.duration(duration, unit) : null;
+            return dayjs.duration(duration, validPattern.test(unit) ? unit : undefined);
         }
         return dayjs.duration(duration);
     },
