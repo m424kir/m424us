@@ -2,11 +2,13 @@
 // @name         ExceedDeck
 // @namespace    M424
 // @version      0.3.0
-// @description  TweetDeckに関するカスタマイズ(used ModernDeck)
+// @description  TweetDeckに関するカスタマイズ
 // @author       M424
 // @match        https://tweetdeck.twitter.com/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=twitter.com
 // @grant        none
+// @updateURL    https://github.com/m424kir/m424us/raw/master/ExceedDeck.js
+// @downloadURL  https://github.com/m424kir/m424us/raw/master/ExceedDeck.js
 // ==/UserScript==
 
 (function() {
