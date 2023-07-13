@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedDeck
 // @namespace    M424
-// @version      0.3.0
+// @version      0.3.1
 // @description  TweetDeckに関するカスタマイズ
 // @author       M424
 // @match        https://tweetdeck.twitter.com/
@@ -47,8 +47,8 @@
         const mainContentsSelector = 'main[role=main]';
         const scrollContentsSelector = 'main[role=main] > div';
         const sideMenuSelector = 'div.css-1dbjc4n.r-18u37iz.r-5swwoo.r-bnwqim';
-        const columnSelector = 'div.css-1dbjc4n.r-cpa5s6';
-        const columnHeaderSelector = 'div.css-1dbjc4n[data-testid=root]';
+        const columnSelector = 'section[tabindex]';
+        const columnHeaderSelector = '[data-testid=root]';
 
         /**
          * 特定の位置でマウスホイールした場合、横スクロールを行う
