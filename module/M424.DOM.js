@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.DOM
 // @namespace    M424.DOM
-// @version      1.0.1
+// @version      1.0.2
 // @description  DOMに関する機能を提供する名前空間
 // @author       M424
 // @require      M424.js
@@ -39,18 +39,23 @@ M424.DOM = {
     },
 
     /**
-     * [async] 引数で渡されたデータ取得関数からデータが取得されるまで待機する関数
+     * 引数で渡されたデータ取得関数からデータが取得されるまで待機する関数
+     * @param {Node} observedElement - 監視対象のDOM要素
      * @param {Function} getterFunc - データ取得関数
-     * @param {number} [timeout=2000] - タイムアウトまでの待機時間（ミリ秒）
+     * @param {number} [timeout=5000] - タイムアウトまでの待機時間（ミリ秒）
      * @returns {Promise} データが取得された場合に解決されるPromise
      * @throws {TypeError} getterFuncが関数でない場合に例外をスローします
      * @throws {TypeError} timeoutが数値でない場合に例外をスローします
+     * @async
      */
-    waitForData: (getterFunc, timeout = 2000) => {
-        if( typeof getterFunc !== 'function' ) {
+    waitForData: (observedElement, getterFunc, timeout = 5000) => {
+        if( !M424.Type.isNode(observedElement)  ) {
+            throw new TypeError('引数[baseElement]はDOM要素[Element]である必要があります。');
+        }
+        if( !M424.Type.isFunction(getterFunc) ) {
             throw new TypeError('引数[getterFunc]は関数[function]である必要があります。');
         }
-        if( typeof timeout !== 'number' ) {
+        if( !M424.Type.isNumber(timeout) ) {
             throw new TypeError('引数[timeout]は数値[number]である必要があります。');
         }
 
@@ -88,25 +93,36 @@ M424.DOM = {
 
             // タイムアウトの設定
             overallTimeoutTimer = setTimeout( () => {
-                onDone(null, `Timeout Error: データの取得に失敗しました.`);
+                onDone(null, new M424.TimeoutError('データの取得に失敗しました'));
             }, timeout);
 
             // 対象データが取得できるまで、DOMの変更を監視する
             observer = new MutationObserver( onExecute );
-            observer.observe(document.documentElement, {childList: true, subtree: true});
+            observer.observe(observedElement, {childList: true, subtree: true});
         });
     },
 
     /**
-     * [async] 指定されたセレクタが取得できるまで待機する関数
+     * 指定されたセレクタが取得できるまで待機する関数
      * @param {string} selector - 取得するセレクタ
+     * @param {Element|Document|DocumentFragment} baseElement - 基底エレメント
      * @param {number} [timeout=2000] - タイムアウトまでの待機時間（ミリ秒）
      * @returns {Promise<Element>} セレクタが取得された場合に解決されるPromise
      * @throws {TypeError} selectorが文字列でない場合に例外をスローします
      * @throws {TypeError} timeoutが数値でない場合に例外をスローします
+     * @async
      */
-    waitForSelector: (selector, timeout = 2000) => {
-        return M424.DOM.waitForData( () => document.querySelector(selector), timeout);
+    waitForSelector: (selector, baseElement=document.documentElement, timeout = 5000) => {
+        if( !M424.Type.isString(selector) ) {
+            throw new TypeError('引数[selector]は文字列[string]である必要があります。');
+        }
+        if( !baseElement || !baseElement.querySelector ) {
+            throw new TypeError('引数[baseElement]はDOM要素[Element]である必要があります。');
+        }
+        if( !M424.Type.isNumber(timeout) ) {
+            throw new TypeError('引数[timeout]は数値[number]である必要があります。');
+        }
+        return M424.DOM.waitForData(baseElement, () => baseElement.querySelector(selector), timeout);
     },
 
     /**
@@ -135,7 +151,7 @@ M424.DOM = {
      * @throws {Error} 要素の取得に失敗した場合に例外をスローします
      */
     waitForCSS: async (selector, timeout = 2000) => {
-        const elem = await M424.DOM.waitForSelector(selector, timeout);
+        const elem = await M424.DOM.waitForSelector(selector, document, timeout);
         return M424.DOM.getCSS(elem);
     },
 
