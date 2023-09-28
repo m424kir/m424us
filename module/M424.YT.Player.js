@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.YT.Player
 // @namespace    M424.YT.Player
-// @version      0.0.1
+// @version      0.1.0
 // @description  Youtubeの動画プレイヤーに関する機能を提供する
 // @author       M424
 // @require      M424.js
@@ -195,7 +195,7 @@ M424.YT.Player = class Player extends M424.Base {
     async #updatePageInfo() {
         this.#pageInfo.pageType = M424.YT.getCurrentPageType(); // 現ページタイプの取得
         this.#pageInfo.urlParams = M424.Util.getURLParams();    // URLパラメータの取得
-        this.#videoInfo = await this.#getVideoInfo();           // 動画情報の取得
+        await this.#updateVideoInfo();                          // 動画情報の更新
         this.elements = await this.#getPageElements();         // DOM情報の取得
     }
 
@@ -204,10 +204,11 @@ M424.YT.Player = class Player extends M424.Base {
      * @private
      * @async
      */
-    async #getVideoInfo() {
+    async #updateVideoInfo() {
         try {
             // 動画ページでなければ、情報を初期化して終了
             if( !this.isVideoPage() ) {
+                this.debug(`[YT.Player::updateVideoInfo] 動画ページではない`);
                 this.#videoInfo = {};
                 return;
             }
@@ -222,6 +223,7 @@ M424.YT.Player = class Player extends M424.Base {
             this.#videoInfo.duration    = videoInfo.duration;
             this.#videoInfo.status      = videoInfo.status;
             this.#videoInfo.uploadDate  = videoInfo.uploadDate;
+            this.debug(`[YT.Player::updateVideoInfo] 動画情報:`, this.#videoInfo);
         } catch(e) {
             console.error(e);
         }
@@ -279,7 +281,7 @@ M424.YT.Player = class Player extends M424.Base {
         const current_sec = this.elements.video.currentTime;
         const duration_sec = this.elements.video.duration;
         if( !current_sec || !duration_sec ) {
-            console.error('[seekVideo] 動画情報が取得できませんでした.');
+            console.error('[YT.Player::seekVideo] 動画情報が取得できませんでした.');
         }
         // 動画が終点(シーク可能範囲が0.1秒未満)で+シーク or 始点で-シークなら処理しない
         if( (sec > 0 && duration_sec - current_sec < 0.1) || (sec < 0 && current_sec < 0.1) ) {
@@ -287,8 +289,7 @@ M424.YT.Player = class Player extends M424.Base {
         }
         const postSeekTime_sec = Math.min( duration_sec, Math.max(0, current_sec + sec) );
         this.elements.video.currentTime = postSeekTime_sec;
-        this.debug(`[seekVideo] ${Math.ceil(postSeekTime_sec - current_sec)}秒シークしました. [${M424.DateTime.toTime(~~postSeekTime_sec)} / ${M424.DateTime.toTime(~~duration_sec)}]`);
-        //this.debug(`[seekVideo] time: ${postSeekTime_sec.toFixed(3)} / ${duration_sec.toFixed(3)}`);
+        this.debug(`[YT.Player::seekVideo] ${Math.ceil(postSeekTime_sec - current_sec)}秒シークしました. [${M424.DateTime.secondsToHMS(~~postSeekTime_sec)} / ${M424.DateTime.secondsToHMS(~~duration_sec)}]`);
     }
 
     /**
@@ -310,7 +311,7 @@ M424.YT.Player = class Player extends M424.Base {
             // 切替えてから表示されるまでに時間がかかるので、読み込まれるまで待つ
             selectedChatMenu = await M424.DOM.waitForSelector(selector, chatDocument);
             if( !selectedChatMenu ) {
-                console.error(`[reloadComment] コメント欄が非表示のため、表示を試みましたが失敗しました.`);
+                console.error(`[YT.Player::reloadComment] コメント欄が非表示のため、表示を試みましたが失敗しました.`);
                 return;
             }
         }
@@ -396,6 +397,7 @@ M424.YT.Player = class Player extends M424.Base {
         // 既にボタンが追加済なら処理を終了する
         const buttonSelector = buttonOptions?.id ? `#${buttonOptions.id}` : `[data-title='${buttonOptions?.title}']`;
         if( this.elements.player.querySelector(buttonSelector) ) {
+            this.debug(`[YT.Player::addButton] ボタン追加済みのため、処理を終了する: ${buttonSelector}`);
             return;
         }
 
