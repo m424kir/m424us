@@ -87,6 +87,29 @@ M424.YT.Player = class Player extends M424.Base {
     };
 
     /**
+     * スタイルの定義
+     * @static
+     */
+    static CSS_RULES = {
+        /**
+         * 動画プレイヤー内に追加したボタンのツールチップ
+         */
+        VIDEO_PLAYER_BUTTON_TOOLTIP: `.${M424.YT.CLASS.M424_YTP_BUTTON_TOOLTIP} {
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            line-height: 15px !important;
+            position: fixed !important;
+            transform: translate(-50%, -150%) !important;
+            pointer-events: none !important;
+            color: rgb(238, 238, 238) !important;
+            background-color: rgba(28, 28, 28, 0.9) !important;
+            text-shadow: rgba(0, 0, 0, 0.5) 0px 0px 2px !important;
+            padding: 5px 9px;
+            border-radius: 2px !important;
+        }`,
+    };
+
+    /**
      * ページ情報
      * @type {Object}
      * @private
