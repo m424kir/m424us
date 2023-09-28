@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.4.2
+// @version      0.4.3
 // @description  Youtubeの機能を拡張するカスタムクラス
 // @author       M424
 // @require      M424.js
@@ -22,8 +22,8 @@
  * - 機能1: コントロールバーに各種ボタンを追加(シーク、コメント再読込)
  * - 機能2: シーク機能の拡張
  *   - デフォルトのシーク時間を15秒に変更(元々は5秒)
- *     - ⇦⇨キー、ボタンによるシークは15秒
- *     - [Shift] + ⇦⇨キーで5秒、[Ctrl] + ⇦⇨キーで30秒
+ *     - ←→キー、ボタンによるシークは15秒
+ *     - [Shift] + ←→キーで5秒、[Ctrl] + ←→キーで30秒
  * - 機能3: 動画ページ(/watch)でマストヘッドを隠す(ホバーで表示)
  * @class
  */
@@ -98,7 +98,7 @@
     #initialize() {
         // マストヘッド切替を実行可能なイベント
         const { MOUSE_MOVE, FOCUS, BLUR } = ExceedTube.EVENT_NAMES;
-        Object.defineProperties(this, 'mastheadSwitchableEvents', {
+        Object.defineProperty(this, 'mastheadSwitchableEvents', {
             value:    [MOUSE_MOVE, FOCUS, BLUR],
             writable: false,
         });
@@ -149,16 +149,16 @@
             //  - [Shift]押下時は5秒、[Ctrl]押下時は30秒シークする
             //  - [Alt]押下時はブラウザの挙動を優先する(ブラウザバック/フォワードが処理される)
             if( [keyLeft, keyRight].includes(evt.code) ) {
-                this.debug(`[KeyDownEvent] 入力キー: ${evt.shiftKey ? "[Shift] + " : evt.ctrlKey ? "[Ctrl] + " : evt.altKey ? "[Alt] + " : ""}${evt.code === keyLeft ? "⇦" : "⇨"}`);
+                this.debug(`[ExceedTube::defineKeyboardEvent][KeyDownEvent] 入力キー: ${evt.shiftKey ? "[Shift] + " : evt.ctrlKey ? "[Ctrl] + " : evt.altKey ? "[Alt] + " : ""}${evt.code === keyLeft ? "←" : "→"}`);
 
                 // 特定のフォーカス時は処理しない
                 if( M424.DOM.isFocusTextInputField(evt) || M424.YT.isFocusVolume() ) {
-                    this.debug( `[KeyDownEvent] ${M424.YT.isFocusVolume() ? "ボリューム" : "テキスト欄"}にフォーカスされているため、処理を中断しました.` );
+                    this.debug( `[ExceedTube::defineKeyboardEvent][KeyDownEvent] ${M424.YT.isFocusVolume() ? "ボリューム" : "テキスト欄"}にフォーカスされているため、処理を中断しました.` );
                     return;
                 }
 
                 if( evt.altKey ) {
-                    this.debug( `[KeyDownEvent] ブラウザ側の処理を優先するため処理を中断します. {入力キー: [Alt] + ${evt.code === keyLeft ? "⇦" : "⇨"}}` );
+                    this.debug( `[ExceedTube::defineKeyboardEvent][KeyDownEvent] ブラウザ側の処理を優先するため処理を中断します. {入力キー: [Alt] + ${evt.code === keyLeft ? "←" : "→"}}` );
                     evt.stopPropagation();
                     return;
                 }
@@ -212,7 +212,7 @@
      */
     #switchMasthead(isShowable) {
         if( isShowable !== this.#isMastheadHidden ) {
-            console.error(`[switchMasthead] マストヘッドの表示切り替えに不備が生じました. { 現在の状態: ${this.#isMastheadHidden ? "非表示" : "表示"}, 切替フラグ: ${isShowable ? "表示" : "非表示"}}`);
+            console.error(`[ExceedTube::switchMasthead] マストヘッドの表示切り替えに不備が生じました. { 現在の状態: ${this.#isMastheadHidden ? "非表示" : "表示"}, 切替フラグ: ${isShowable ? "表示" : "非表示"}}`);
             return;
         }
         if( isShowable ) {
