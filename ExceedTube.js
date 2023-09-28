@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.5.1
+// @version      0.5.2
 // @description  Youtubeの機能を拡張するカスタムクラス
 // @author       M424
 // @require      M424.js
@@ -236,7 +236,11 @@
         }
         if( isShowable ) {
             this.elements.ytdApp?.removeAttribute(M424.YT.ATTRIBUTE.MASTHEAD_HIDDEN);
-            this.elements.ytdApp?.style.setProperty(M424.YT.CSS.YTD_MASTHEAD_HEIGHT, `${M424.YT.SIZE.MASTHEAD_HEIGHT}px`);
+            // 動画ページでは、マストヘッドは上位レイヤーに表示する
+            //  - マストヘッドの高さ56pxを設定してしまうと画面全体で56px分下がってしまうため、ガクッとした動きになってしまい微妙
+            if( !this.isVideoPage() ) {
+                this.elements.ytdApp?.style.setProperty(M424.YT.CSS.YTD_MASTHEAD_HEIGHT, `${M424.YT.SIZE.MASTHEAD_HEIGHT}px`);
+            }
         } else {
             this.elements.ytdApp?.setAttribute(M424.YT.ATTRIBUTE.MASTHEAD_HIDDEN);
             this.elements.ytdApp?.style.setProperty(M424.YT.CSS.YTD_MASTHEAD_HEIGHT, `0px`);
