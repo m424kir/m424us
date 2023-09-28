@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.Mouse
 // @namespace    M424.Mouse
-// @version      1.0.1
+// @version      1.0.2
 // @description  マウスに関する機能を提供するクラス
 // @author       M424
 // @require      M424.js
@@ -20,9 +20,16 @@ M424.Mouse = class Mouse extends M424.Base {
      * @static
      */
     static EVENT_NAMES = {
-        MOUSE_ENTER: 'mouseenter',  // マウスポインタが要素に入った瞬間に発生します。
-        MOUSE_LEAVE: 'mouseleave',  // マウスポインタが要素から出た瞬間に発生します。
-        MOUSE_MOVE: 'mousemove',    // マウスポインタが要素上を移動するたびに発生します。
+        CLICK:          'click',        // 要素がクリックされたときに発生します。
+        DBLCLICK:       'dblclick',     // 要素がダブルクリックされたときに発生します。
+        MOUSE_DOWN:     'mousedown',    // マウスボタンが要素の上で押されたときに発生します。
+        MOUSE_UP:       'mouseup',      // マウスボタンが要素の上で離されたときに発生します。
+        MOUSE_OVER:     'mouseover',    // マウスポインターが要素の上に乗ったときに発生します。
+        MOUSE_OUT:      'mouseout',     // マウスポインターが要素の上から離れたときに発生します。
+        MOUSE_ENTER:    'mouseenter',   // マウスポインタが要素に入った瞬間に発生します。(子要素は含まない)
+        MOUSE_LEAVE:    'mouseleave',   // マウスポインタが要素から出た瞬間に発生します。(子要素は含まない)
+        MOUSE_MOVE:     'mousemove',    // マウスポインタが要素上を移動するたびに発生します。
+        CONTEXT_MENU:   'contextmenu',  // 要素上で右クリックしたときに発生します。
     };
 
     /**
