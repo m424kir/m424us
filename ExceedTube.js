@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.5.0
+// @version      0.5.1
 // @description  Youtubeの機能を拡張するカスタムクラス
 // @author       M424
 // @require      M424.js
@@ -305,6 +305,10 @@
 
         // プレイヤーコントロールにボタン追加
         this.#addButtonToVideoPlayerControls();
+
+        // チャット欄が表示されてなければ表示する
+        this.showComment();
+
     }
 
     /**
