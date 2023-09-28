@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.YT.Player
 // @namespace    M424.YT.Player
-// @version      0.1.0
+// @version      0.1.1
 // @description  Youtubeの動画プレイヤーに関する機能を提供する
 // @author       M424
 // @require      M424.js
@@ -472,7 +472,7 @@ M424.YT.Player = class Player extends M424.Base {
         const cssElem = document.createElement(styleTag);
         cssElem.classList.add(M424_STYLE_TOOLTIP);
         cssElem.setAttribute('type', 'text/css');
-        cssElem.textContent = M424.YT.CSS_RULES.VIDEO_PLAYER_BUTTON_TOOLTIP;
+        cssElem.textContent = M424.YT.Player.CSS_RULES.VIDEO_PLAYER_BUTTON_TOOLTIP;
         document.head.appendChild(cssElem);
     }
 };
