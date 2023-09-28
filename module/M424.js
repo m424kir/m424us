@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424
 // @namespace    M424
-// @version      1.1.1
+// @version      1.1.2
 // @description  独自定義の機能を提供する名前空間
 // @author       M424
 // @require      https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js
@@ -373,6 +373,15 @@ M424.DateTime = {
             return dayjs.duration(duration, validPattern.test(unit) ? unit : undefined);
         }
         return dayjs.duration(duration);
+    },
+
+    /**
+     * 指定された秒数からHH:mm:ss形式の文字列に変換します
+     * @param {number} sec - 秒数
+     * @returns {string} "HH:mm:ss"形式の文字列
+     */
+    secondsToHMS: (sec) => {
+        return M424.DateTime.duration(sec, 's').format(M424.DateTime.FORMATS.TIME);
     },
 
     /**
