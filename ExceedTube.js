@@ -189,6 +189,8 @@
         const { EVENT_NAMES: { SHOW_MASTHEAD, HIDE_MASTHEAD }, USER_SETTINGS: { MASTHEAD: { SHOW_DELAY_MS, HIDE_DELAY_MS } } } = ExceedTube;
         const isShowable = this.#canShowMasthead(evt);  // 表示可能か？
 
+        const addEvent    = isShowable ? SHOW_MASTHEAD : HIDE_MASTHEAD;
+        const removeEvent = isShowable ? HIDE_MASTHEAD : SHOW_MASTHEAD;
         const delayMs = isShowable ? SHOW_DELAY_MS : HIDE_DELAY_MS;
 
         // 実行中のイベントと同じイベントは登録しない
