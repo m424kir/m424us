@@ -253,6 +253,7 @@
      * @private
      */
     #canShowMasthead(evt) {
+        if( !this.isVideoPage() ) return true;
         const isMastheadSwitchable = this.mastheadSwitchableEvents.includes(evt);
         const isShowable = this.#isHoverMasthead() || M424.YT.isFocusSearchBox();
         return isMastheadSwitchable && isShowable;
