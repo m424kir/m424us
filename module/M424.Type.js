@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         M424.Type
 // @namespace    M424.Type
-// @version      1.0.0
+// @version      1.0.1
 // @description  データの型に関する機能を提供する名前空間
 // @author       M424
+// @require      M424.js
 // ==/UserScript==
 'use strict';
 
@@ -171,16 +172,6 @@ M424.Type = {
     },
 
     /**
-     * 引数が関数かどうかを判定する
-     * @param {any} variable
-     * @returns {boolean} true:引数が関数
-     */
-    isFunction: (variable) => {
-        return typeof variable === 'function' && M424.Type.getClassName(variable) === 'Function';
-    },
-
-
-    /**
      * 指定の型かどうかを判定する
      *  - typeにはデータ型オブジェクト(Function)または型文字列(String)のみ許容する
      *  - typeにNullまたはUndefinedを指定できない(エラーが発生)
@@ -229,13 +220,31 @@ M424.Type = {
     },
 
     /**
-     * 引数が数値かどうかを判定する
+     * 引数が文字列かどうかを判定する
+     *  - Stringオブジェクトは文字列として判定しません。
+     * @param {*} variable - 判定する変数
+     * @returns {boolean} true: 引数が文字列
+     */
+    isString: (variable) => typeof variable === 'string',
+
+    /**
+     * 引数が有限な数値かどうかを判定する
      *  - 判定する数値は有限である必要があります。(NaN,±Infinityはfalse)
      *  - Numberオブジェクトは数値として判定しません。
-     * @param {number} value - 判定したい値
-     * @returns {boolean} 引数が数値の場合は true、それ以外の場合は false
+     * @param {*} variable - 判定する引数
+     * @returns {boolean} true: 引数が数値
      */
-    isNumber: (value) => typeof value === 'number' && Number.isFinite(value),
+    isNumber: (variable) => typeof variable === 'number' && Number.isFinite(variable),
+
+    /**
+     * 引数が関数かどうかを判定する
+     * @param {*} variable - 判定する引数
+     * @returns {boolean} true:引数が関数
+     */
+    isFunction: (variable) => {
+        return typeof variable === 'function';
+        // return typeof variable === 'function' && M424.Type.getClassName(variable) === 'Function';
+    },
 
     /**
      * 引数がNode型であるか判定する
