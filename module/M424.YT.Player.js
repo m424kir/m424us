@@ -133,10 +133,11 @@ M424.YT.Player = class Player extends M424.Base {
     /**
      * コンストラクタ
      * @constructor
+     * @param {string} [scriptId='YT.Player'] - スクリプトID
      * @param {Boolean} [isDebugMode=false] - デバックログを出力するか
      */
-    constructor(isDebugMode=false) {
-        super('YT.Player', isDebugMode);
+    constructor(scriptId='YT.Player', isDebugMode=false) {
+        super(scriptId, isDebugMode);
         this.#initialize();
     }
 
