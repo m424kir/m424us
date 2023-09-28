@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HideMasthead
-// @namespace    M424
-// @version      0.1.1
+// @namespace    M424.YT
+// @version      0.1.2
 // @description  Youtube動画ページでマストヘッドを隠す
 // @author       M424
 // @require      M424.js
@@ -11,7 +11,7 @@
 // @require      LazyFunctionExecutor.js
 // ==/UserScript==
 
-class HideMasthead extends M424.Base {
+M424.YT.HideMasthead = class HideMasthead extends M424.Base {
 
     /**
      * マストヘッドの表示/非表示に関する設定
