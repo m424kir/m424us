@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.DOM
 // @namespace    M424.DOM
-// @version      1.0.2
+// @version      1.0.3
 // @description  DOMに関する機能を提供する名前空間
 // @author       M424
 // @require      M424.js
@@ -177,8 +177,8 @@ M424.DOM = {
         const svg  = document.createElementNS(M424.Consts.NAMESPACE_URI.SVG, 'svg');
         const path = document.createElementNS(M424.Consts.NAMESPACE_URI.SVG, 'path');
 
-        M424.DOM.setAttributesNS(svg, null, svgAttributes);
-        M424.DOM.setAttributesNS(path, null, pathAttributes);
+        M424.DOM.setAttributesNS(null, svg, svgAttributes);
+        M424.DOM.setAttributesNS(null, path, pathAttributes);
         svg.appendChild(path);
 
         return svg;
