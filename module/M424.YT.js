@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.YT
 // @namespace    M424.YT
-// @version      0.0.1
+// @version      0.1.0
 // @description  Youtubeに関する機能を提供する
 // @author       M424
 // @require      M424.js
@@ -45,30 +45,6 @@ M424.YT = {
      */
     SIZE: {
         MASTHEAD_HEIGHT: 56,
-    },
-
-    /**
-     * スタイルの定義
-     * @constant {Object}
-     */
-    CSS_RULES: {
-        /**
-         * 動画プレイヤー内に追加したボタンのツールチップ
-         */
-        VIDEO_PLAYER_BUTTON_TOOLTIP: `.${M424.YT.CLASS.M424_YTP_BUTTON_TOOLTIP} {
-            font-size: 13px !important;
-            font-weight: 500 !important;
-            line-height: 15px !important;
-            position: fixed !important;
-            transform: translate(-50%, -150%) !important;
-            pointer-events: none !important;
-            color: rgb(238, 238, 238) !important;
-            background-color: rgba(28, 28, 28, 0.9) !important;
-            text-shadow: rgba(0, 0, 0, 0.5) 0px 0px 2px !important;
-            padding: 5px 9px;
-            border-radius: 2px !important;
-        }`,
-
     },
 
     /**
@@ -158,13 +134,13 @@ M424.YT = {
          * @constant {Array}
          */
         PATHNAMES: [
-            { name: M424.YT.STATUS.PAGE.HOME,           regex: /^\/$/ },                    // ホーム
-            { name: M424.YT.STATUS.PAGE.VIDEO,          regex: /^\/watch$/ },               // 動画
-            { name: M424.YT.STATUS.PAGE.SHORTS,         regex: /^\/short\// },              // ショート
-            { name: M424.YT.STATUS.PAGE.SUBSCRIPTIONS,  regex: /^\/feed\/subscriptions$/ }, // 登録チャンネル
-            { name: M424.YT.STATUS.PAGE.CHANNELS,       regex: /^\/(user|channel|c)\// },   // ユーザーチャンネル
-            { name: M424.YT.STATUS.PAGE.HISTORY,        regex: /^\/feed\/history$/ },       // 履歴
-            { name: M424.YT.STATUS.PAGE.PLAYLIST,       regex: /^\/playlist$/ },            // プレイリスト
+            { name: 'home',           regex: /^\/$/ },                    // ホーム
+            { name: 'video',          regex: /^\/watch$/ },               // 動画
+            { name: 'shorts',         regex: /^\/short\// },              // ショート
+            { name: 'subscriptions',  regex: /^\/feed\/subscriptions$/ }, // 登録チャンネル
+            { name: 'channels',       regex: /^\/(user|channel|c)\// },   // ユーザーチャンネル
+            { name: 'history',        regex: /^\/feed\/history$/ },       // 履歴
+            { name: 'playlist',       regex: /^\/playlist$/ },            // プレイリスト
         ],
     },
 
@@ -181,7 +157,9 @@ M424.YT = {
      * 現在、動画ページであるかを判定する
      * @returns {boolean} true:動画ページである
      */
-    isVideoPage: () => getCurrentPageType() === M424.YT.STATUS.PAGE.VIDEO,
+    isVideoPage: () => {
+        return M424.YT.getCurrentPageType() === M424.YT.STATUS.PAGE.VIDEO;
+    },
 
     /**
      * 現在のURLから動画IDを取得する。
@@ -220,7 +198,7 @@ M424.YT = {
             const videoInfoNode = await M424.DOM.waitForSelector(M424.YT.SELECTOR.VIDEO_INFO);
             const videoInfo = JSON.parse(videoInfoNode.textContent);
             if( !videoInfo || typeof videoInfo !== 'object' ) {
-                throw new Error('不正なデータ');
+                throw new Error('[YT::getVideoInfo] 不正なデータ');
             }
 
             videoInfo.status = videoInfo.publication
@@ -234,7 +212,7 @@ M424.YT = {
             videoInfo.uploadDate = M424.DateTime.of(videoInfo.uploadDate);
             return videoInfo;
         } catch(error) {
-            throw new Error(`動画情報の取得に失敗しました: ${error.message}`);
+            throw error;
         }
     },
 
@@ -247,7 +225,7 @@ M424.YT = {
         try {
             const videoInfo = await M424.YT.getVideoInfo();
             if( !videoInfo ) {
-                throw new Error('動画情報の取得に失敗しました');
+                throw new Error('[YT::isStreaming] 動画情報の取得に失敗しました');
             }
             return videoInfo.status !== M424.YT.STATUS.STREAMING.VIDEO;
         } catch(error) {
