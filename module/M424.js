@@ -1,9 +1,14 @@
 // ==UserScript==
 // @name         M424
 // @namespace    M424
-// @version      1.1.0
+// @version      1.1.1
 // @description  独自定義の機能を提供する名前空間
 // @author       M424
+// @require      https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js
+// @require      https://cdn.jsdelivr.net/npm/dayjs@1/locale/ja.js
+// @require      https://cdn.jsdelivr.net/npm/dayjs@1/plugin/duration.js
+// @require      https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.js
+// @require      M424.Type.js
 // ==/UserScript==
 'use strict';
 
@@ -185,7 +190,6 @@ M424.Consts = {
         FUNCTION:   'function',
     },
 };
-
 
 /**
  * システムに関する機能を提供する名前空間
@@ -596,4 +600,25 @@ M424.Util = {
             : min < num && num < max
         ;
     },
+};
+
+/**
+ * 独自エラーオブジェクトの基底クラス
+ * @class
+ */
+M424.ErrorBase = class ErrorBase extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'ErrorBase';
+    }
+};
+/**
+ * タイムアウトエラー
+ * @class
+ */
+M424.TimeoutError = class TimeoutError extends M424.ErrorBase {
+    constructor(message) {
+        super(message);
+        this.name = 'TimeoutError';
+    }
 };
