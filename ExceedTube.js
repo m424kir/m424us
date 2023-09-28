@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.4.3
+// @version      0.5.0
 // @description  Youtubeの機能を拡張するカスタムクラス
 // @author       M424
 // @require      M424.js
@@ -34,8 +34,11 @@
      * @static
      */
     static USER_SETTINGS = {
-        TOGGLE_DELAY_MS:   250, // マストヘッドの切り替えるための遅延時間(msec)
-        SHOW_THRESHOLD_Y:   25, // マストヘッド(56px)を表示させるy座標の閾値
+        MASTHEAD: {
+            SHOW_DELAY_MS:    400, // マストヘッドを表示状態にするまでの時間(msec)
+            HIDE_DELAY_MS:    250, // マストヘッドを非表示状態にするまでの時間(msec)
+            SHOW_THRESHOLD_Y: 30,  // マストヘッド(56px)を表示させるy座標の閾値(px)
+        },
     };
 
     /**
@@ -97,9 +100,9 @@
      */
     #initialize() {
         // マストヘッド切替を実行可能なイベント
-        const { MOUSE_MOVE, FOCUS, BLUR } = ExceedTube.EVENT_NAMES;
+        const { MOUSE_MOVE, MOUSE_ENTER, MOUSE_LEAVE, FOCUS, BLUR } = ExceedTube.EVENT_NAMES;
         Object.defineProperty(this, 'mastheadSwitchableEvents', {
-            value:    [MOUSE_MOVE, FOCUS, BLUR],
+            value:    [MOUSE_MOVE, MOUSE_ENTER, MOUSE_LEAVE, FOCUS, BLUR],
             writable: false,
         });
 
@@ -119,12 +122,11 @@
      * @private
      */
     #defineMouseEvent() {
-        const { MOUSE_MOVE, MOUSE_ENTER, MOUSE_LEAVE } = M424.Mouse.EVENT_NAMES;
-
         // マウス移動時に、マストヘッドの表示切替処理を行う
+        const { MOUSE_MOVE, MOUSE_ENTER, MOUSE_LEAVE } = ExceedTube.EVENT_NAMES;
         this.#mouse.setCallback(MOUSE_MOVE, this.#registMastheadEvent.bind(this, MOUSE_MOVE));
-        // this.#mouse.setCallback(MOUSE_ENTER, this.#registMastheadEvent.bind(this, MOUSE_ENTER));
-        // this.#mouse.setCallback(MOUSE_LEAVE, this.#registMastheadEvent.bind(this, MOUSE_LEAVE));
+        this.#mouse.setCallback(MOUSE_ENTER, this.#registMastheadEvent.bind(this, MOUSE_ENTER));
+        this.#mouse.setCallback(MOUSE_LEAVE, this.#registMastheadEvent.bind(this, MOUSE_LEAVE));
     }
 
     /**
@@ -184,25 +186,36 @@
      * @private
      */
     #registMastheadEvent(evt) {
-        const { SHOW_MASTHEAD, HIDE_MASTHEAD } = ExceedTube.EVENT_NAMES;
+        const { EVENT_NAMES: { SHOW_MASTHEAD, HIDE_MASTHEAD }, USER_SETTINGS: { MASTHEAD: { SHOW_DELAY_MS, HIDE_DELAY_MS } } } = ExceedTube;
         const isShowable = this.#canShowMasthead(evt);  // 表示可能か？
+
+        const delayMs = isShowable ? SHOW_DELAY_MS : HIDE_DELAY_MS;
+
+        // 実行中のイベントと同じイベントは登録しない
+        //  - 表示処理実行中(SHOW_MASTHEAD) かつ 表示処理実行可能状態(isShowable === true)
+        //  - 非表示処理実行中(HIDE_MASTHEAD) かつ 非表示処理実行可能状態(isShowable === false)
+        if( this.#events.isReady(addEvent) ) {
+            this.debug(`[ExceedTube::registMastheadEvent] 実行中のイベントと同じイベントのため、登録処理をスキップします.`, addEvent);
+            return;
+        }
+        // 実行中と逆のイベントの場合は、実行中のイベントを削除する
+        //  - 表示処理実行中(SHOW_MASTHEAD) かつ 非表示処理実行可能状態(isShowable === false)
+        //  - 非表示処理実行中(HIDE_MASTHEAD) かつ 表示処理実行可能状態(isShowable === true)
+        if( this.#events.isReady(removeEvent) ) {
+            this.debug(`[ExceedTube::registMastheadEvent] 実行中のイベントと逆のイベントのため、実行中のイベントを削除しました.`, removeEvent);
+            this.#events.remove(removeEvent);
+            return;
+        }
         // 表示中に表示する、またその逆の場合は何もしない
         if( isShowable !== this.#isMastheadHidden ) return;
-
-        const addEvent    = isShowable ? SHOW_MASTHEAD : HIDE_MASTHEAD;
-        const removeEvent = isShowable ? HIDE_MASTHEAD : SHOW_MASTHEAD;
-
-        // 削除対象が実行中なら削除する
-        if( this.#events.isReady(removeEvent) ) this.#events.remove(removeEvent);
-        // 追加対象が実行中なら何もしない
-        if( this.#events.isReady(addEvent) ) return;
 
         // イベント登録
         this.#events.add(
             this.#switchMasthead.bind(this, isShowable),
-            ExceedTube.USER_SETTINGS.TOGGLE_DELAY_MS,
+            delayMs,
             { name: addEvent }
         );
+        this.debug(`[ExceedTube::registMastheadEvent] イベントを追加しました. {イベント名: ${addEvent}, 遅延時間: ${delayMs}msec}`);
     }
 
     /**
@@ -211,6 +224,10 @@
      * @private
      */
     #switchMasthead(isShowable) {
+        if( !this.elements.ytdApp ) {
+            this.debug(`[ExceedTube::switchMasthead] DOM情報が更新中のため、処理をスキップします.`);
+            return;
+        }
         if( isShowable !== this.#isMastheadHidden ) {
             console.error(`[ExceedTube::switchMasthead] マストヘッドの表示切り替えに不備が生じました. { 現在の状態: ${this.#isMastheadHidden ? "非表示" : "表示"}, 切替フラグ: ${isShowable ? "表示" : "非表示"}}`);
             return;
@@ -244,7 +261,7 @@
      * @returns {boolean} true: ホバー判定
      */
     #isHoverMasthead() {
-        const { SHOW_THRESHOLD_Y } = ExceedTube.USER_SETTINGS;
+        const { SHOW_THRESHOLD_Y } = ExceedTube.USER_SETTINGS.MASTHEAD;
         const { MASTHEAD_HEIGHT } = M424.YT.SIZE;
 
         // 状態によって、ホバー判定を変える
