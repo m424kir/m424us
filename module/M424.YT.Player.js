@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.YT.Player
 // @namespace    M424.YT.Player
-// @version      0.1.4
+// @version      0.1.5
 // @description  Youtubeの動画プレイヤーに関する機能を提供する
 // @author       M424
 // @require      M424.js
@@ -278,7 +278,7 @@ M424.YT.Player = class Player extends M424.Base {
      * @returns {boolean} true: 生配信中 or 配信アーカイブ
      */
     isStreaming() {
-        return this.#videoInfo.status !== M424.YT.STATUS.STREAMING.VIDEO;
+        return this.isVideoPage() && this.#videoInfo.status !== M424.YT.STATUS.STREAMING.VIDEO;
     }
 
     /**
