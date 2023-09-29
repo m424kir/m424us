@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.YT
 // @namespace    M424.YT
-// @version      0.1.0
+// @version      0.1.1
 // @description  Youtubeに関する機能を提供する
 // @author       M424
 // @require      M424.js
@@ -27,6 +27,7 @@ M424.YT = {
         PLAYER_LEFT_CTRLS:      '#ytd-player .ytp-left-controls',
         PLAYER_RIGHT_CTRLS:     '#ytd-player .ytp-right-controls',
         PLAYER_SETTINGS_BUTTON: '#ytd-player .ytp-settings-button',
+        CHAT_CONTAINER:         '#chat-container',
         CHAT_FRAME:             'iframe#chatframe',
         SEARCH_BOX:             '#masthead input#search',
         VIDEO_INFO:             'script#scriptTag',

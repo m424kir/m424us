@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.YT.Player
 // @namespace    M424.YT.Player
-// @version      0.1.2
+// @version      0.1.3
 // @description  Youtubeの動画プレイヤーに関する機能を提供する
 // @author       M424
 // @require      M424.js
@@ -238,19 +238,25 @@ M424.YT.Player = class Player extends M424.Base {
     async #getPageElements() {
         const { SELECTOR } = M424.YT;
         const elems = {};
-        elems.ytdApp    = await M424.DOM.waitForSelector(SELECTOR.YTD_APP);
-        elems.searchBox = await M424.DOM.waitForSelector(SELECTOR.SEARCH_BOX);
 
-        if( this.isVideoPage() ) {
-            elems.player            = await M424.DOM.waitForSelector(SELECTOR.YTD_APP);
-            elems.video             = await M424.DOM.waitForSelector(SELECTOR.VIDEO_STREAM);
-            elems.ytpLControls      = await M424.DOM.waitForSelector(SELECTOR.PLAYER_LEFT_CTRLS);
-            elems.ytpRControls      = await M424.DOM.waitForSelector(SELECTOR.PLAYER_RIGHT_CTRLS);
-            elems.ytpSettingsButton = await M424.DOM.waitForSelector(SELECTOR.PLAYER_SETTINGS_BUTTON);
+        try {
+            elems.ytdApp    = await M424.DOM.waitForSelector(SELECTOR.YTD_APP);
+            elems.searchBox = await M424.DOM.waitForSelector(SELECTOR.SEARCH_BOX);
 
-            if( this.isStreaming() ) {
-                elems.chatFrame = await M424.DOM.waitForSelector(SELECTOR.CHAT_FRAME);
+            if( this.isVideoPage() ) {
+                elems.player            = await M424.DOM.waitForSelector(SELECTOR.YTD_APP);
+                elems.video             = await M424.DOM.waitForSelector(SELECTOR.VIDEO_STREAM);
+                elems.ytpLControls      = await M424.DOM.waitForSelector(SELECTOR.PLAYER_LEFT_CTRLS);
+                elems.ytpRControls      = await M424.DOM.waitForSelector(SELECTOR.PLAYER_RIGHT_CTRLS);
+                elems.ytpSettingsButton = await M424.DOM.waitForSelector(SELECTOR.PLAYER_SETTINGS_BUTTON);
+
+                if( this.isStreaming() ) {
+                    const chatContainer = await M424.DOM.waitForSelector(SELECTOR.CHAT_CONTAINER);
+                    elems.chatFrame = await M424.DOM.waitForSelector(SELECTOR.CHAT_FRAME, chatContainer, 500);
+                }
             }
+        } catch(e) {
+            this.error(e);
         }
         return elems;
     }
@@ -281,7 +287,7 @@ M424.YT.Player = class Player extends M424.Base {
         const current_sec = this.elements.video.currentTime;
         const duration_sec = this.elements.video.duration;
         if( !current_sec || !duration_sec ) {
-            console.error('[YT.Player::seekVideo] 動画情報が取得できませんでした.');
+            this.error('[YT.Player::seekVideo] 動画情報が取得できませんでした.');
         }
         // 動画が終点(シーク可能範囲が0.1秒未満)で+シーク or 始点で-シークなら処理しない
         if( (sec > 0 && duration_sec - current_sec < 0.1) || (sec < 0 && current_sec < 0.1) ) {
