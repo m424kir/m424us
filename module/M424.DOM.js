@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.DOM
 // @namespace    M424.DOM
-// @version      1.0.3
+// @version      1.0.4
 // @description  DOMに関する機能を提供する名前空間
 // @author       M424
 // @require      M424.js
@@ -42,13 +42,13 @@ M424.DOM = {
      * 引数で渡されたデータ取得関数からデータが取得されるまで待機する関数
      * @param {Node} observedElement - 監視対象のDOM要素
      * @param {Function} getterFunc - データ取得関数
-     * @param {number} [timeout=5000] - タイムアウトまでの待機時間（ミリ秒）
+     * @param {number} [timeout=10000] - タイムアウトまでの待機時間（ミリ秒）
      * @returns {Promise} データが取得された場合に解決されるPromise
      * @throws {TypeError} getterFuncが関数でない場合に例外をスローします
      * @throws {TypeError} timeoutが数値でない場合に例外をスローします
      * @async
      */
-    waitForData: (observedElement, getterFunc, timeout = 5000) => {
+    waitForData: (observedElement, getterFunc, timeout = 10000) => {
         if( !M424.Type.isNode(observedElement)  ) {
             throw new TypeError('引数[baseElement]はDOM要素[Element]である必要があります。');
         }
@@ -106,13 +106,13 @@ M424.DOM = {
      * 指定されたセレクタが取得できるまで待機する関数
      * @param {string} selector - 取得するセレクタ
      * @param {Element|Document|DocumentFragment} baseElement - 基底エレメント
-     * @param {number} [timeout=2000] - タイムアウトまでの待機時間（ミリ秒）
+     * @param {number} [timeout=10000] - タイムアウトまでの待機時間（ミリ秒）
      * @returns {Promise<Element>} セレクタが取得された場合に解決されるPromise
      * @throws {TypeError} selectorが文字列でない場合に例外をスローします
      * @throws {TypeError} timeoutが数値でない場合に例外をスローします
      * @async
      */
-    waitForSelector: (selector, baseElement=document.documentElement, timeout = 5000) => {
+    waitForSelector: (selector, baseElement=document.documentElement, timeout = 10000) => {
         if( !M424.Type.isString(selector) ) {
             throw new TypeError('引数[selector]は文字列[string]である必要があります。');
         }
@@ -145,12 +145,12 @@ M424.DOM = {
     /**
      * [async] 指定されたセレクタの要素が取得できるまで待機し、取得後にCSS情報を返す関数
      * @param {string} selector - CSSセレクタ
-     * @param {number} [timeout=2000] - タイムアウト時間（ミリ秒）（省略可能）
+     * @param {number} [timeout=10000] - タイムアウト時間（ミリ秒）（省略可能）
      * @returns {Promise<CSSStyleDeclaration>} CSS情報が取得された場合に解決されるPromise
      * @throws {TypeError} 引数が正しい型でない場合に例外をスローします
      * @throws {Error} 要素の取得に失敗した場合に例外をスローします
      */
-    waitForCSS: async (selector, timeout = 2000) => {
+    waitForCSS: async (selector, timeout = 10000) => {
         const elem = await M424.DOM.waitForSelector(selector, document, timeout);
         return M424.DOM.getCSS(elem);
     },
@@ -159,10 +159,10 @@ M424.DOM = {
      * [async] 指定されたセレクタのプロパティ値が取得できるまで待機する関数
      * @param {string} selector - CSSセレクタ
      * @param {string} property - 取得したいプロパティ名
-     * @param {number} [timeout=2000] - タイムアウト時間（ミリ秒）
+     * @param {number} [timeout=10000] - タイムアウト時間（ミリ秒）
      * @returns {Promise<string>} プロパティ値が取得された場合に解決されるPromise
      */
-    waitForPropertyValue: async (selector, property, timeout = 2000) => {
+    waitForPropertyValue: async (selector, property, timeout = 10000) => {
         const css = await M424.DOM.waitForCSS(selector, timeout);
         return M424.DOM.waitForData( () => css.getPropertyValue(property), timeout);
     },
