@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.YT.Player
 // @namespace    M424.YT.Player
-// @version      0.1.3
+// @version      0.1.4
 // @description  Youtubeの動画プレイヤーに関する機能を提供する
 // @author       M424
 // @require      M424.js
@@ -252,7 +252,11 @@ M424.YT.Player = class Player extends M424.Base {
 
                 if( this.isStreaming() ) {
                     const chatContainer = await M424.DOM.waitForSelector(SELECTOR.CHAT_CONTAINER);
-                    elems.chatFrame = await M424.DOM.waitForSelector(SELECTOR.CHAT_FRAME, chatContainer, 500);
+                    try {
+                        elems.chatFrame = await M424.DOM.waitForSelector(SELECTOR.CHAT_FRAME, chatContainer, 500);
+                    } catch(e) {
+                        this.debug(`[YT.Player::getPageElements] チャットリプレイができていないため、チャット欄が取得できませんでした.(処理自体に問題はありません)`);
+                    }
                 }
             }
         } catch(e) {
