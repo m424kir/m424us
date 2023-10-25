@@ -27,7 +27,7 @@ M424.YT = {
         PLAYER_LEFT_CTRLS:      '#ytd-player .ytp-left-controls',
         PLAYER_RIGHT_CTRLS:     '#ytd-player .ytp-right-controls',
         PLAYER_SETTINGS_BUTTON: '#ytd-player .ytp-settings-button',
-        CHAT_CONTAINER:         '#chat-container',
+        CHAT_CONTAINER:         '#chat-container > ytd-live-chat-frame#chat',
         CHAT_FRAME:             'iframe#chatframe',
         SEARCH_BOX:             '#masthead input#search',
         VIDEO_INFO:             'script#scriptTag',

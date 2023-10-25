@@ -335,7 +335,7 @@ M424.YT.Player = class Player extends M424.Base {
     showComment() {
         if( !this.isVideoPage() || !this.isStreaming() ) return;
 
-        const selector = '#show-hide-button button:not([aria-label*="非"])';
+        const selector = `${M424.YT.CHAT_CONTAINER}[collapsed] #show-hide-button button`;
         const chatShowutton = document.querySelector(selector);
         chatShowutton?.click();
     }
