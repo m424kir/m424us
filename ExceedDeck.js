@@ -1,15 +1,22 @@
 // ==UserScript==
 // @name         ExceedDeck
 // @namespace    M424
-// @version      0.3.1
+// @version      0.4.1
 // @description  TweetDeckに関するカスタマイズ
 // @author       M424
-// @match        https://tweetdeck.twitter.com/
+// @match        https://twitter.com/i/tweetdeck
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=twitter.com
 // @grant        none
-// @updateURL    https://github.com/m424kir/m424us/raw/master/ExceedDeck.js
-// @downloadURL  https://github.com/m424kir/m424us/raw/master/ExceedDeck.js
 // ==/UserScript==
+
+/**
+ * TwitterもといXが買収されたことにより、tweetdeckが有料化したため、
+ * 下記の拡張機能を使用して旧TweetDeckを再現している
+ *  ･OldTweetDeck
+ *
+ * また、URLが変更になったので@matchを更新
+ *  旧URL: https://tweetdeck.twitter.com/
+ */
 
 (function() {
     'use strict';
@@ -19,9 +26,9 @@
      *  - 下方向のホイールで｢次の画像｣、上方向のホイールで｢前の画像｣に切り替える
      */
     {
-        const imageContainerSelector = 'div[role=group]';
-        const nextButtonSelector = 'div[aria-label=次のスライド][role=button]';
-        const prevButtonSelector = 'div[aria-label=前のスライド][role=button]';
+        const imageContainerSelector = '#open-modal .js-modal-panel';
+        const nextButtonSelector = '.mdl-media-next';
+        const prevButtonSelector = '.mdl-media-prev';
 
         /**
          * マウスホイール量によって、画像を切り替える
@@ -44,11 +51,11 @@
      *    - 下端のスクロールバー上
      */
     {
-        const mainContentsSelector = 'main[role=main]';
-        const scrollContentsSelector = 'main[role=main] > div';
-        const sideMenuSelector = 'div.css-1dbjc4n.r-18u37iz.r-5swwoo.r-bnwqim';
-        const columnSelector = 'section[tabindex]';
-        const columnHeaderSelector = '[data-testid=root]';
+        const mainContentsSelector = '.js-app-content.app-content';
+        const scrollContentsSelector = '.js-app-columns-container.app-columns-container';
+        const sideMenuSelector = 'header.js-app-header';
+        const columnSelector = 'section.js-column.column';
+        const columnHeaderSelector = 'header.column-header';
 
         /**
          * 特定の位置でマウスホイールした場合、横スクロールを行う
@@ -84,6 +91,7 @@
                 if( (e.deltaY < 0 && currentScrollAmount === 0) || (e.deltaY > 0 && currentScrollAmount > maxScrollAmount) ) {
                     return 0;
                 }
+                //console.log(mainContentsWidth, columnWidth, columnItems, maxScrollAmount, currentScrollAmount);
                 return Math.sign(e.deltaY) * columnWidth;
             }
             scrollContents.scrollLeft += scrollAmount();
