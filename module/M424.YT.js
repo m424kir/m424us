@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.YT
 // @namespace    M424.YT
-// @version      0.1.1
+// @version      0.1.2
 // @description  Youtubeに関する機能を提供する
 // @author       M424
 // @require      M424.js
@@ -30,7 +30,7 @@ M424.YT = {
         CHAT_CONTAINER:         '#chat-container > ytd-live-chat-frame#chat',
         CHAT_FRAME:             'iframe#chatframe',
         SEARCH_BOX:             '#masthead input#search',
-        VIDEO_INFO:             'script#scriptTag',
+        VIDEO_INFO:             '#microformat script[type="application/ld+json"]',
     },
 
     /**
