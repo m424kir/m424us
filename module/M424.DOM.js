@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.DOM
 // @namespace    M424.DOM
-// @version      1.0.4
+// @version      1.0.5
 // @description  DOMに関する機能を提供する名前空間
 // @author       M424
 // @require      M424.js
@@ -34,7 +34,8 @@ M424.DOM = {
      */
     setAttributesNS: (namespace, elem, attributes) => {
         Object.entries(attributes).forEach( ([key, value]) => {
-            elem.setAttributeNS(namespace, key, value);
+            // jsでは変数名に-(ハイフン)を使用できないため、変数名は_(アンダーバー)で代用しているため戻す
+            elem.setAttributeNS(namespace, key.replace(/_/g, '-'), value);
         });
     },
 
@@ -170,18 +171,21 @@ M424.DOM = {
     /**
      * SVG画像オブジェクトを生成する
      * @param {Object} svgAttributes - SVGタグの属性設定(連想配列)
-     * @param {Object} pathAttributes - PATHタグの属性設定(連想配列)
+     * @param {Object} pathAttributes - PATHタグの属性設定(連想配列)が格納された配列
      * @returns {SVGElement} 生成されたSVG画像Element
      */
     createSvg: (svgAttributes, pathAttributes) => {
-        const svg  = document.createElementNS(M424.Consts.NAMESPACE_URI.SVG, 'svg');
-        const path = document.createElementNS(M424.Consts.NAMESPACE_URI.SVG, 'path');
+        const svgElem  = document.createElementNS(M424.Consts.NAMESPACE_URI.SVG, 'svg');
 
-        M424.DOM.setAttributesNS(null, svg, svgAttributes);
-        M424.DOM.setAttributesNS(null, path, pathAttributes);
-        svg.appendChild(path);
+        M424.DOM.setAttributesNS(null, svgElem, svgAttributes);
+        const paths = pathAttributes.map(attributes => {
+            const pathElem = document.createElementNS(M424.Consts.NAMESPACE_URI.SVG, 'path');
+            M424.DOM.setAttributesNS(null, pathElem, attributes);
+            return pathElem;
+        });
+        svgElem.append(...paths);
 
-        return svg;
+        return svgElem;
     },
 
     /**
