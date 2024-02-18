@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.YT.Player
 // @namespace    M424.YT.Player
-// @version      0.1.6
+// @version      0.1.7
 // @description  Youtubeの動画プレイヤーに関する機能を提供する
 // @author       M424
 // @require      M424.js
@@ -377,8 +377,9 @@ M424.YT.Player = class Player extends M424.Base {
         const elems = {};
 
         try {
-            elems.ytdApp    = await M424.DOM.waitForSelector(SELECTOR.YTD_APP);
-            elems.searchBox = await M424.DOM.waitForSelector(SELECTOR.SEARCH_BOX);
+            elems.ytdApp        = await M424.DOM.waitForSelector(SELECTOR.YTD_APP);
+            elems.ytdWatchFlexy = await M424.DOM.waitForSelector(SELECTOR.YTD_WATCH_FLEXY);
+            elems.searchBox     = await M424.DOM.waitForSelector(SELECTOR.SEARCH_BOX);
 
             if( this.isVideoPage() ) {
                 elems.player            = await M424.DOM.waitForSelector(SELECTOR.YTD_APP);

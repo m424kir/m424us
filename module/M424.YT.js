@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.YT
 // @namespace    M424.YT
-// @version      0.1.2
+// @version      0.1.3
 // @description  Youtubeに関する機能を提供する
 // @author       M424
 // @require      M424.js
@@ -22,6 +22,7 @@ M424.YT = {
      */
     SELECTOR: {
         YTD_APP:                'ytd-app',
+        YTD_WATCH_FLEXY:        'ytd-app ytd-watch-flexy',
         PLAYER:                 '#ytd-player #movie_player',
         VIDEO_STREAM:           '#ytd-player video',
         PLAYER_LEFT_CTRLS:      '#ytd-player .ytp-left-controls',

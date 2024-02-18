@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.5.3
+// @version      0.5.4
 // @description  Youtubeの機能を拡張するカスタムクラス
 // @author       M424
 // @require      M424.js
@@ -203,7 +203,7 @@
 
         const addEvent    = isShowable ? SHOW_MASTHEAD : HIDE_MASTHEAD;
         const removeEvent = isShowable ? HIDE_MASTHEAD : SHOW_MASTHEAD;
-        const delayMs = isShowable ? SHOW_DELAY_MS : HIDE_DELAY_MS;
+        const delayMs     = isShowable ? SHOW_DELAY_MS : HIDE_DELAY_MS;
 
         // 実行中のイベントと同じイベントは登録しない
         //  - 表示処理実行中(SHOW_MASTHEAD) かつ 表示処理実行可能状態(isShowable === true)
@@ -309,6 +309,24 @@
      * @override
      */
     updateEntirePageDisplay() {
+        // 全画面かどうかを監視する
+        const targetAttribute = 'fullscreen';
+        const options = { attributes: true, attributeFilter: [targetAttribute] };
+        const observer = new MutationObserver( mutations => {
+            mutations.forEach( mu => {
+                if( mu.type === 'attributes' && mu.attributeName === targetAttribute ) {
+                    // 全画面解除時
+                    if( !this.elements.ytdWatchFlexy.hasAttribute(targetAttribute) ) {
+                        // 全画面解除によりマストヘッドが表示化される
+                        this.#isMastheadHidden = false;
+                        // 再度マストヘッド非表示化
+                        this.#registMastheadEvent();
+                    }
+                }
+            });
+        });
+        observer.observe(this.elements.ytdWatchFlexy, options);
+
         // マストヘッドを非表示化
         this.#registMastheadEvent();
     }
