@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         M424.YT.Player
 // @namespace    M424.YT.Player
-// @version      0.1.5
+// @version      0.1.6
 // @description  Youtubeの動画プレイヤーに関する機能を提供する
 // @author       M424
 // @require      M424.js
@@ -14,6 +14,11 @@
 
 /**
  * Youtubeの動画プレイヤーに関する機能を提供する
+ * @description
+ * - 現ページ及び動画の情報を取得する処理
+ * - ユーザ指定のシーク処理
+ * - プレイヤーコントロールにカスタムボタンを追加する処理
+ * - 生放送/アーカイブのコメント欄を表示及び情報の再取得する処理
  * @class
  */
 M424.YT.Player = class Player extends M424.Base {
@@ -22,67 +27,199 @@ M424.YT.Player = class Player extends M424.Base {
      * シーク時間定義
      * @static
      */
-    static SEEK_TIME = { default: 15, short: 5, long: 30 };
-
+    static SEEK_TIME = { DEFAULT: 5, SEC_15: 15, SEC_30: 30, SEC_60: 60 };
     /**
      * カスタムボタン定義
      * @description プレイヤー下部のコントロール欄に追加するボタンの定義
      * @static
      */
     static CUSTOM_BUTTON = {
-        // 動画を15秒戻す
-        SEEK_BACKWARD: {
+        // 15秒巻き戻す
+        SEEK_REWIND_15: {
             ATTRIBUTES: {
-                id:     'm424-seek-backward-button',
-                title:  '15秒戻る',
-                opacity: 1,
+                id:                 'm424-rewind15-btn',
+                title:              '15秒戻る',
+                opacity:            '1',
             },
-            SVG_OPTIONS: {
-                version:    '1.1',
-                height:     '100%',
-                width:      '100%',
-                viewBox:    '0 0 16 16',
+            SVG_ATTRIBUTES: {
+                viewBox:            '0 0 24 24',
+                fill:               'none',
+                stroke:             'currentColor',
+                stroke_width:       '2',
+                stroke_linecap:     'round',
+                stroke_linejoin:    'round',
             },
-            PATH_OPTIONS: {
-                fill:   '#eee',
-                d:      'm8 8 7 4V4zM1 8l7 4V4z',
-            },
+            PATH_ATTRIBUTES: [
+                {
+                    d:              'M0 0h24v24H0z',
+                    stroke:         'none',
+                },
+                {
+                    d:              'M8 20h2a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1H8v-3h3M15 18a6 6 0 1 0 0-12H4M5 14v6',
+                },
+                {
+                    d:              'M7 9 4 6l3-3',
+                },
+            ],
         },
-        // 動画を15秒進める
-        SEEK_FORWARD: {
+        // 30秒巻き戻す
+        SEEK_REWIND_30: {
             ATTRIBUTES: {
-                id:     'm424-seek-forward-button',
-                title:  '15秒進む',
-                opacity: 1,
+                id:                 'm424-rewind30-btn',
+                title:              '30秒戻る',
+                opacity:            '1',
             },
-            SVG_OPTIONS: {
-                version:    '1.1',
-                height:     '100%',
-                width:      '100%',
-                viewBox:    '0 0 16 16',
+            SVG_ATTRIBUTES: {
+                viewBox:            '0 0 24 24',
+                fill:               'none',
+                stroke:             'currentColor',
+                stroke_width:       '2',
+                stroke_linecap:     'round',
+                stroke_linejoin:    'round',
             },
-            PATH_OPTIONS: {
-                fill:   '#eee',
-                d:      'M7.875 8 .938 12V4C.875 4 7.875 8 7.875 8zm7 0-7 4V4z',
-            },
+            PATH_ATTRIBUTES: [
+                {
+                    d:              'M0 0h24v24H0z',
+                    stroke:         'none',
+                },
+                {
+                    d:              'M19 16a6 6 0 0 0-4-10H4M12 16v3a2 2 0 0 0 3 0v-3a2 2 0 0 0-3 0zM6 14h2a2 2 0 0 1 0 3H7h1a2 2 0 0 1 0 3H6',
+                },
+                {
+                    d:              'M7 9 4 6l3-3',
+                },
+            ],
         },
+        // 60秒巻き戻す
+        SEEK_REWIND_60: {
+            ATTRIBUTES: {
+                id:                 'm424-rewind60-btn',
+                title:              '60秒戻る',
+                opacity:            '1',
+            },
+            SVG_ATTRIBUTES: {
+                viewBox:            '0 0 24 24',
+                fill:               'none',
+                stroke:             'currentColor',
+                stroke_width:       '2',
+                stroke_linecap:     'round',
+                stroke_linejoin:    'round',
+            },
+            PATH_ATTRIBUTES: [
+                {
+                    d:              'M0 0h24v24H0z',
+                    stroke:         'none',
+                },
+                {
+                    d:              'M19 16a6 6 0 0 0-4-10H4',
+                },
+                {
+                    d:              'M7 9 4 6l3-3M12 16v3a2 2 0 0 0 3 0v-3a2 2 0 0 0-3 0zM9 14H7a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1H6',
+                },
+            ],
+        },
+        // 15秒進む
+        SEEK_FORWARD_15: {
+            ATTRIBUTES: {
+                id:                 'm424-forward15-btn',
+                title:              '15秒進む',
+                opacity:            '1',
+            },
+            SVG_ATTRIBUTES: {
+                viewBox:            '0 0 24 24',
+                fill:               'none',
+                stroke:             'currentColor',
+                stroke_width:       '2',
+                stroke_linecap:     'round',
+                stroke_linejoin:    'round',
+            },
+            PATH_ATTRIBUTES: [
+                {
+                    d:              'M0 0h24v24H0z',
+                    stroke:         'none',
+                },
+                {
+                    d:              'm17 9 3-3-3-3',
+                },
+                {
+                    d:              'M9 18A6 6 0 1 1 9 6h11m-4 14h2a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1h-2v-3h3m-6 0v6',
+                },
+            ],
+        },
+        // 30秒進む
+        SEEK_FORWARD_30: {
+            ATTRIBUTES: {
+                id:                 'm424-forward30-btn',
+                title:              '30秒進む',
+                opacity:            '1',
+            },
+            SVG_ATTRIBUTES: {
+                viewBox:            '0 0 24 24',
+                fill:               'none',
+                stroke:             'currentColor',
+                stroke_width:       '2',
+                stroke_linecap:     'round',
+                stroke_linejoin:    'round',
+            },
+            PATH_ATTRIBUTES: [
+                {
+                    d:              'M0 0h24v24H0z',
+                    stroke:         'none',
+                },
+                {
+                    d:              'M5.007 16.478A6 6 0 0 1 9 6h11m-5 9.5v3a1.5 1.5 0 0 0 3 0v-3a1.5 1.5 0 0 0-3 0z',
+                },
+                {
+                    d:              'm17 9 3-3-3-3M9 14h1.5a1.5 1.5 0 0 1 0 3H10h.5a1.5 1.5 0 0 1 0 3H9',
+                },
+            ],
+        },
+        // 60秒進む
+        SEEK_FORWARD_60: {
+            ATTRIBUTES: {
+                id:                 'm424-forward60-btn',
+                title:              '60秒進む',
+                opacity:            '1',
+            },
+            SVG_ATTRIBUTES: {
+                viewBox:            '0 0 24 24',
+                fill:               'none',
+                stroke:             'currentColor',
+                stroke_width:       '2',
+                stroke_linecap:     'round',
+                stroke_linejoin:    'round',
+            },
+            PATH_ATTRIBUTES: [
+                {
+                    d:              'M0 0h24v24H0z',
+                    stroke:         'none',
+                },
+                {
+                    d:              'M5.007 16.478A6 6 0 0 1 9 6h11m-5 9.5v3a1.5 1.5 0 0 0 3 0v-3a1.5 1.5 0 0 0-3 0z',
+                },
+                {
+                    d:              'm17 9 3-3-3-3m-5 11h-2a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1H9',
+                },
+            ],
+        },
+
         // コメントの再読込
         RELOAD_COMMENT: {
             ATTRIBUTES: {
-                id:     'm424-reload-comment-button',
+                id:     'm424-reload-comment-btn',
                 title:  'コメント再読込',
                 opacity: 1,
             },
-            SVG_OPTIONS: {
+            SVG_ATTRIBUTES: {
                 version:    '1.1',
                 height:     '100%',
                 width:      '100%',
                 viewBox:    '-2 0 20 14',
             },
-            PATH_OPTIONS: {
+            PATH_ATTRIBUTES: [{
                 fill:   '#eee',
                 d:      'M1.5 1h13l.5.5v10l-.5.5H7.71l-2.86 2.85L4 14.5V12H1.5l-.5-.5v-10l.5-.5Zm6 10H14V2H2v9h2.5l.5.5v1.79l2.15-2.14.35-.15ZM13 4H3v1h10V4ZM3 6h10v1H3V6Zm7 2H3v1h7V8Z',
-            },
+            }],
         },
     };
 
@@ -284,14 +421,21 @@ M424.YT.Player = class Player extends M424.Base {
     /**
      * 動画を指定秒シークする
      * @param {number} sec - シークする秒数
+     * @async
      */
-    seekVideo(sec) {
+    async seekVideo(sec) {
         if( !this.isVideoPage() ) return;
 
         const current_sec = this.elements.video.currentTime;
         const duration_sec = this.elements.video.duration;
         if( !current_sec || !duration_sec ) {
-            this.error('[YT.Player::seekVideo] 動画情報が取得できませんでした.');
+            // セレクタ情報の再取得処理を追加
+            if( document.querySelector(M424.YT.VIDEO_STREAM) ) {
+                this.elements = await this.#getPageElements();
+                this.log(`[YT.Player::seekVideo] セレクタ情報を再取得しました`);
+            } else {
+                this.error('[YT.Player::seekVideo] 動画情報が取得できませんでした.');
+            }
         }
         // 動画が終点(シーク可能範囲が0.1秒未満)で+シーク or 始点で-シークなら処理しない
         if( (sec > 0 && duration_sec - current_sec < 0.1) || (sec < 0 && current_sec < 0.1) ) {
@@ -353,6 +497,50 @@ M424.YT.Player = class Player extends M424.Base {
         };
 
         // シークボタン追加
+        const { SEEK_REWIND_15, SEEK_REWIND_30, SEEK_REWIND_60, SEEK_FORWARD_15, SEEK_FORWARD_30, SEEK_FORWARD_60 } = M424.YT.Player.CUSTOM_BUTTON;
+        this.#addButton(
+            SEEK_REWIND_60.ATTRIBUTES,
+            SEEK_REWIND_60.SVG_ATTRIBUTES,
+            SEEK_REWIND_60.PATH_ATTRIBUTES,
+            insertPlace,
+            async () => this.seekVideo(-M424.YT.Player.SEEK_TIME.SEC_60)
+        );
+        this.#addButton(
+            SEEK_REWIND_30.ATTRIBUTES,
+            SEEK_REWIND_30.SVG_ATTRIBUTES,
+            SEEK_REWIND_30.PATH_ATTRIBUTES,
+            insertPlace,
+            async () => this.seekVideo(-M424.YT.Player.SEEK_TIME.SEC_30)
+        );
+        this.#addButton(
+            SEEK_REWIND_15.ATTRIBUTES,
+            SEEK_REWIND_15.SVG_ATTRIBUTES,
+            SEEK_REWIND_15.PATH_ATTRIBUTES,
+            insertPlace,
+            async () => this.seekVideo(-M424.YT.Player.SEEK_TIME.SEC_15)
+        );
+        this.#addButton(
+            SEEK_FORWARD_15.ATTRIBUTES,
+            SEEK_FORWARD_15.SVG_ATTRIBUTES,
+            SEEK_FORWARD_15.PATH_ATTRIBUTES,
+            insertPlace,
+            async () => this.seekVideo(M424.YT.Player.SEEK_TIME.SEC_15)
+        );
+        this.#addButton(
+            SEEK_FORWARD_30.ATTRIBUTES,
+            SEEK_FORWARD_30.SVG_ATTRIBUTES,
+            SEEK_FORWARD_30.PATH_ATTRIBUTES,
+            insertPlace,
+            async () => this.seekVideo(M424.YT.Player.SEEK_TIME.SEC_30)
+        );
+        this.#addButton(
+            SEEK_FORWARD_60.ATTRIBUTES,
+            SEEK_FORWARD_60.SVG_ATTRIBUTES,
+            SEEK_FORWARD_60.PATH_ATTRIBUTES,
+            insertPlace,
+            async () => this.seekVideo(M424.YT.Player.SEEK_TIME.SEC_60)
+        );
+/*
         const { SEEK_BACKWARD, SEEK_FORWARD } = M424.YT.Player.CUSTOM_BUTTON;
         this.#addButton(
             SEEK_BACKWARD.ATTRIBUTES,
@@ -368,6 +556,7 @@ M424.YT.Player = class Player extends M424.Base {
             insertPlace,
             () => this.seekVideo(M424.YT.Player.SEEK_TIME.default)
         );
+*/
     }
 
     /**
@@ -383,29 +572,29 @@ M424.YT.Player = class Player extends M424.Base {
         };
 
         // コメント再読込ボタン追加
-        const { ATTRIBUTES, SVG_OPTIONS, PATH_OPTIONS } = M424.YT.Player.CUSTOM_BUTTON.RELOAD_COMMENT;
+        const { ATTRIBUTES, SVG_ATTRIBUTES, PATH_ATTRIBUTES } = M424.YT.Player.CUSTOM_BUTTON.RELOAD_COMMENT;
         const onClick = async () => await this.reloadComment();
-        this.#addButton(ATTRIBUTES, SVG_OPTIONS, PATH_OPTIONS, insertPlace, onClick);
+        this.#addButton(ATTRIBUTES, SVG_ATTRIBUTES, PATH_ATTRIBUTES, insertPlace, onClick);
     }
 
     /**
      * 動画プレイヤーにカスタムボタンを追加します。
-     * @param {Object} buttonOptions - ボタンオプション
+     * @param {Object} btnAttributes - ボタンオプション
      * @param {string} [buttonOptions.title='MyButton'] - ボタンのツールチップ表示名
      * @param {string} [buttonOptions.id=''] - ボタンのID
-     * @param {Object} svgOptions - svgタグに設定する属性値(連想配列)
-     * @param {Object} pathOptions - pathタグに設定する属性値(連想配列)
+     * @param {Object} svgAttributes - svgタグに設定する属性値(連想配列)
+     * @param {Object} pathAttributes - pathタグに設定する属性値(連想配列)が格納された配列
      * @param {Object} insertPlace - ボタンの挿入場所
      * @param {Element} [insertPlace.parentElement=ytpRControls] - ボタンの親要素(初期値:右コントロール)
      * @param {Element} [insertPlace.referenceElement=null] - ボタンの挿入位置(初期値:末尾)
      * @param {Function} onClick - ボタンがクリックされた際の処理
      * @private
      */
-    #addButton(buttonOptions, svgOptions, pathOptions, insertPlace, onClick) {
+    #addButton(btnAttributes, svgAttributes, pathAttributes, insertPlace, onClick) {
         if( !this.isVideoPage() ) return;
 
         // 既にボタンが追加済なら処理を終了する
-        const buttonSelector = buttonOptions?.id ? `#${buttonOptions.id}` : `[data-title='${buttonOptions?.title}']`;
+        const buttonSelector = btnAttributes?.id ? `#${btnAttributes.id}` : `[data-title='${btnAttributes?.title}']`;
         if( this.elements.player.querySelector(buttonSelector) ) {
             this.debug(`[YT.Player::addButton] ボタン追加済みのため、処理を終了する: ${buttonSelector}`);
             return;
@@ -413,9 +602,9 @@ M424.YT.Player = class Player extends M424.Base {
 
         // カスタムボタンを生成
         const button = this.#generateVideoPlayerButton({
-            title:      buttonOptions?.title || 'MyButton',
-            id:         buttonOptions?.id || '',
-            child:      M424.DOM.createSvg(svgOptions, pathOptions),
+            title:      btnAttributes?.title || 'MyButton',
+            id:         btnAttributes?.id || '',
+            child:      M424.DOM.createSvg(svgAttributes, pathAttributes),
             onclick:    onClick || null,
         });
 
