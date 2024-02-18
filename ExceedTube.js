@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ExceedTube
 // @namespace    M424
-// @version      0.5.2
+// @version      0.5.3
 // @description  Youtubeの機能を拡張するカスタムクラス
 // @author       M424
 // @require      M424.js
@@ -19,12 +19,14 @@
 /**
  * Youtube カスタムクラス
  * @description
- * - 機能1: コントロールバーに各種ボタンを追加(シーク、コメント再読込)
- * - 機能2: シーク機能の拡張
- *   - デフォルトのシーク時間を15秒に変更(元々は5秒)
- *     - ←→キー、ボタンによるシークは15秒
- *     - [Shift] + ←→キーで5秒、[Ctrl] + ←→キーで30秒
- * - 機能3: 動画ページ(/watch)でマストヘッドを隠す(ホバーで表示)
+ * - 機能1: プレイヤーコントロールに各種ボタンを追加
+ *      - シークボタン(15,30,60sec)
+ *      - コメント再読込ボタン
+ * - 機能2: ⇦⇨キーによるシーク機能の拡張
+ *      - デフォルトシークはYoutube標準の機能を使用(5sec)
+ *      - [Shift]押下時は15sec、[Ctrl]押下時は30sec シークするよう機能を追加
+ * - 機能3: プレイヤーが表示されるページ(/watch)ではマストヘッドを隠す機能を追加
+ *      - 画面上部ホバー及び検索欄フォーカスで表示、それ以外で隠れる
  * @class
  */
  class ExceedTube extends M424.YT.Player {
@@ -147,9 +149,11 @@
             const keyLeft = 'ArrowLeft', keyRight = 'ArrowRight';
 
             // ⇦⇨キー
-            //  - 既存の5秒シークを15秒シークに再定義する
-            //  - [Shift]押下時は5秒、[Ctrl]押下時は30秒シークする
-            //  - [Alt]押下時はブラウザの挙動を優先する(ブラウザバック/フォワードが処理される)
+            //  - 左右キーのみの場合は、既存の5秒シーク
+            //  - [Shift]押下時は15秒、[Ctrl]押下時は30秒シークする
+            //      - シーク秒数の定義はM424.YT.Player.SEEK_TIME.[shift, ctrl]
+            //  - [Alt]押下時は何もしない
+            //      - ブラウザの挙動を優先(ブラウザバック/フォワードが処理される)
             if( [keyLeft, keyRight].includes(evt.code) ) {
                 this.debug(`[ExceedTube::defineKeyboardEvent][KeyDownEvent] 入力キー: ${evt.shiftKey ? "[Shift] + " : evt.ctrlKey ? "[Ctrl] + " : evt.altKey ? "[Alt] + " : ""}${evt.code === keyLeft ? "←" : "→"}`);
 
@@ -159,20 +163,28 @@
                     return;
                 }
 
+                // [Alt]押下時はブラウザ挙動を優先
+                //  - ブラウザバック/フォワードが処理される
                 if( evt.altKey ) {
                     this.debug( `[ExceedTube::defineKeyboardEvent][KeyDownEvent] ブラウザ側の処理を優先するため処理を中断します. {入力キー: [Alt] + ${evt.code === keyLeft ? "←" : "→"}}` );
                     evt.stopPropagation();
                     return;
                 }
 
+                // 通常押下時は、Youtube定義のシークを実行する(5秒シーク)
+                if( !evt.shiftKey && !evt.ctrlKey ) {
+                    this.debug( `[ExceedTube::defineKeyboardEvent][KeyDownEvent] Youtube定義のシークを実行します. {入力キー: ${evt.code === keyLeft ? "←" : "→"}}` );
+                    return;
+                }
+
                 // キー入力をなかったことにする
                 evt.preventDefault();
 
-                // シークする
+                // シークする(Default:5sec, Shift:15sec, Ctrl:30sec)
                 const callcSeekTime = (evt) => {
                     const { SEEK_TIME } = M424.YT.Player;
                     const dir = evt.code === keyLeft ? -1 : 1;
-                    const sec = evt.shiftKey ? SEEK_TIME.short : evt.ctrlKey ? SEEK_TIME.long : SEEK_TIME.default;
+                    const sec = evt.shiftKey ? SEEK_TIME.SEC_15 : evt.ctrlKey ? SEEK_TIME.SEC_30 : SEEK_TIME.DEFAULT;
                     return dir * sec;
                 }
                 this.seekVideo( callcSeekTime(evt) );
