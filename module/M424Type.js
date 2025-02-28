@@ -22,8 +22,8 @@ M424.Type = {
    * @constant {Object}
    */
   HAS_DOM: {
-    NODE: hasWindow ? window.Node : null,
-    ELEMENT: hasWindow ? window.Element : null,
+    NODE: M424.Type.HAS_WINDOW ? window.Node : null,
+    ELEMENT: M424.Type.HAS_WINDOW ? window.Element : null,
   },
 
   /**
